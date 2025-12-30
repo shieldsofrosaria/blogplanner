@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SL Blog Planner</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>SL Blog Planner</h2>
+                <p class="subtitle">Organize & Export Easily</p>
+            </div>
+            <nav class="nav-menu">
+                <button class="nav-btn active" data-section="new-post">
+                    ➕ New Post
+                </button>
+                <button class="nav-btn" data-section="my-posts">
+                    📋 My Posts
+                </button>
+                <button class="nav-btn" data-section="settings">
+                    ⚙️ Settings
+                </button>
+            </nav>
+            <div class="sidebar-footer">
+                <p>💚 Second Life Blogger</p>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Top Navigation -->
+            <header class="top-nav">
+                <h1>Blog Planner</h1>
+                <div class="top-nav-actions">
+                    <span id="status-message" class="status-message"></span>
+                </div>
+            </header>
+
+            <!-- New Post Section -->
+            <section id="new-post" class="section active">
+                <div class="form-container">
+                    <h2>Plan Your Blog Post</h2>
+                    
+                    <!-- Step 1: Planning -->
+                    <fieldset class="form-section">
+                        <legend>📍 Planning Stage</legend>
+                        
+                        <div class="form-group">
+                            <label for="post-title">Post Title</label>
+                            <input type="text" id="post-title" placeholder="e.g., Cozy Winter Night">
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="post-avatar">Avatar(s) to Use</label>
+                                <input type="text" id="post-avatar" placeholder="e.g., Grey Wolf, Blue Dragon">
+                            </div>
+                            <div class="form-group">
+                                <label for="post-scene">Scene Description</label>
+                                <input type="text" id="post-scene" placeholder="e.g., Mountain cabin at sunset">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="post-concept">Concept Details (80% complete)</label>
+                            <textarea id="post-concept" rows="4" placeholder="Detail your vision: mood, lighting, poses, special elements..."></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="inspiration-images">Inspiration/Reference Images</label>
+                            <input type="file" id="inspiration-images" accept="image/*" multiple>
+                            <small>Upload multiple reference images to inspire your shoot</small>
+                            <div id="inspiration-gallery" class="inspiration-gallery"></div>
+                        </div>
+                    </fieldset>
+
+                    <!-- Step 2: Blog Image Upload -->
+                    <fieldset class="form-section">
+                        <legend>📸 Blog Image</legend>
+                        
+                        <div class="form-group">
+                            <label for="blog-image">Upload Image</label>
+                            <input type="file" id="blog-image" accept="image/*">
+                            <small>JPG, PNG recommended</small>
+                            <div id="image-preview" class="image-preview"></div>
+                        </div>
+                    </fieldset>
+
+                    <!-- Step 3: Sponsors -->
+                    <fieldset class="form-section">
+                        <legend>💚 Sponsors</legend>
+                        
+                        <div id="sponsors-list" class="credits-list">
+                            <div class="credit-item">
+                                <input type="text" placeholder="Creator/Store" class="sponsor-store">
+                                <input type="text" placeholder="Item Name" class="sponsor-item">
+                                <input type="text" placeholder="Event Name (optional)" class="sponsor-event">
+                                <input type="text" placeholder="Event Details (link, dates)" class="sponsor-details">
+                                <input type="text" placeholder="@handle (optional)" class="sponsor-handle" style="font-size: 12px;">
+                                <button type="button" class="btn-remove" onclick="removeCredit(this)">✕</button>
+                            </div>
+                        </div>
+                        <button type="button" class="btn-secondary" onclick="addSponsor()">+ Add Sponsor</button>
+                    </fieldset>
+
+                    <!-- Step 4: Caption -->
+                    <fieldset class="form-section">
+                        <legend>✍️ Caption</legend>
+                        
+                        <div class="form-group">
+                            <label>Formatting Options</label>
+                            <div class="formatting-toolbar">
+                                <button type="button" class="fmt-btn" onclick="formatCaption('bold')" title="Bold"><b>B</b></button>
+                                <button type="button" class="fmt-btn" onclick="formatCaption('italic')" title="Italic"><i>I</i></button>
+                                <button type="button" class="fmt-btn" onclick="formatCaption('underline')" title="Underline"><u>U</u></button>
+                                <button type="button" class="fmt-btn" onclick="formatCaption('link')" title="Add Link">🔗</button>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <textarea id="post-caption" rows="6" placeholder="Write your blog caption here..."></textarea>
+                        </div>
+                    </fieldset>
+
+                    <!-- Step 4B: BlueSky Link -->
+                    <!-- Sponsor @ Mentions -->
+                    <!-- Step 5: Credits -->
+                    <fieldset class="form-section">
+                        <legend>✨ Credits</legend>
+                        
+                        <div id="credits-list" class="credits-list">
+                            <div class="credit-item">
+                                <input type="text" placeholder="Creator/Store" class="credit-store">
+                                <input type="text" placeholder="Item Name" class="credit-item">
+                                <input type="text" placeholder="Event Name (optional)" class="credit-event">
+                                <input type="text" placeholder="Event Details (link, dates)" class="credit-details">
+                                <button type="button" class="btn-remove" onclick="removeCredit(this)">✕</button>
+                            </div>
+                        </div>
+                        <button type="button" class="btn-secondary" onclick="addCredit()">+ Add Credit</button>
+                    </fieldset>
+
+                    <!-- Platform-Specific Settings -->
+                    <fieldset class="form-section">
+                        <legend>🌐 Platform-Specific Settings</legend>
+                        
+                        <div class="platform-tabs">
+                            <button type="button" class="platform-tab-btn active" data-platform="bluesky" onclick="switchPlatformTab('bluesky')">💙 BlueSky</button>
+                        </div>
+
+                        <div id="bluesky-tab" class="platform-tab-content active">
+                            <div class="form-group">
+                                <label for="bluesky-link">Blog Post Link</label>
+                                <input type="url" id="bluesky-link" placeholder="https://www.flickr.com/photos/... or https://yourname.tumblr.com/post/...">
+                                <small>Link to your Flickr or Tumblr blog post (used in BlueSky export)</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Sponsor BlueSky Account</label>
+                                <small>Copy these to tag sponsors in your reply post on BlueSky</small>
+                                <textarea id="sponsor-mentions" readonly rows="2" placeholder="@ mentions will appear here when you add sponsors with handles"></textarea>
+                                <button type="button" class="btn-secondary" onclick="copySponsorMentions()" style="margin-top: 10px;">📋 Copy</button>
+                            </div>
+                        </div>
+                    </fieldset>
+
+                    <!-- Step 6: Your Bio -->
+                    <fieldset class="form-section">
+                        <legend>👤 Your Bio</legend>
+                        <p class="info-text">Your bio is set in Settings and automatically included in all exports.</p>
+                        <div id="bio-display" class="bio-display"></div>
+                    </fieldset>
+
+                    <!-- Action Buttons -->
+                    <div class="form-actions">
+                        <button type="button" class="btn-primary" onclick="savePost()">💾 Save Post</button>
+                        <button type="button" class="btn-secondary" onclick="previewExports()">👁️ Preview Exports</button>
+                        <button type="button" class="btn-danger" onclick="clearForm()">🗑️ Clear</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- My Posts Section -->
+            <section id="my-posts" class="section">
+                <div class="posts-container">
+                    <h2>My Blog Posts</h2>
+                    <div id="posts-list" class="posts-grid">
+                        <p class="empty-state">No posts yet. Create your first one!</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Settings Section -->
+            <section id="settings" class="section">
+                <div class="settings-container">
+                    <h2>Settings</h2>
+                    
+                    <fieldset class="form-section">
+                        <legend>� Your Bio (Auto-included in all exports)</legend>
+                        <p class="info-text">Enter your permanent bio once. It will be automatically added to every platform export.</p>
+                        
+                        <div class="form-group">
+                            <label for="author-bio">Your Bio (HTML supported)</label>
+                            <textarea id="author-bio" rows="3" placeholder="e.g., <b>GRAVES GHOSTLY</b> 🐺💚 <a href='https://gravesghostly.blog/'>Blog</a> ✦ <a href='https://bsky.app/profile/gravesghostly.blog'>Bluesky</a> ✦ <a href='https://www.youtube.com/@gravesghostly'>Youtube</a>"></textarea>
+                            <small>Tip: Keep it under 200 characters for BlueSky compatibility</small>
+                        </div>
+
+                        <button type="button" class="btn-primary" onclick="saveSettings()">💾 Save Bio</button>
+                    </fieldset>
+                    
+                    <fieldset class="form-section">
+                        <legend>🔌 API Configuration</legend>
+                        <p class="info-text">Configure your backup and image upload services (optional).</p>
+                        
+                        <div class="form-group">
+                            <label for="jsonbin-key">JSONbin API Key</label>
+                            <input type="password" id="jsonbin-key" placeholder="Your JSONbin secret key">
+                            <small><a href="https://jsonbin.io/" target="_blank">Get your key here →</a></small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="imgbb-key">ImgBB API Key</label>
+                            <input type="password" id="imgbb-key" placeholder="Your ImgBB API key">
+                            <small><a href="https://imgbb.com/" target="_blank">Get your key here →</a></small>
+                        </div>
+
+                        <button type="button" class="btn-primary" onclick="saveSettings()">💾 Save Settings</button>
+                    </fieldset>
+
+                    <fieldset class="form-section">
+                        <legend>📊 Data Management</legend>
+                        <button type="button" class="btn-secondary" onclick="exportAllData()">⬇️ Export All Data</button>
+                        <button type="button" class="btn-danger" onclick="clearAllData()">🗑️ Clear All Data</button>
+                    </fieldset>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Export Preview Modal -->
+    <div id="export-modal" class="modal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+            <h2>Platform Exports</h2>
+            
+            <div class="export-tabs">
+                <button class="export-tab-btn active" data-platform="flickr">Flickr</button>
+                <button class="export-tab-btn" data-platform="bluesky">BlueSky</button>
+                <button class="export-tab-btn" data-platform="youtube">YouTube</button>
+                <button class="export-tab-btn" data-platform="primfeed">Primfeed</button>
+                <button class="export-tab-btn" data-platform="blog">Blog</button>
+            </div>
+
+            <div id="export-content" class="export-content">
+                <textarea id="export-text" readonly rows="12"></textarea>
+            </div>
+
+            <div class="export-actions">
+                <button class="btn-primary" onclick="copyExport()">📋 Copy to Clipboard</button>
+                <button class="btn-secondary" onclick="downloadExport()">⬇️ Download</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
