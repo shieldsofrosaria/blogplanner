@@ -364,7 +364,7 @@ class BlogPlanner {
         document.getElementById('exportOutput').value = output;
     }
 
-    copyToClipboard() {
+    async copyToClipboard() {
         const exportOutput = document.getElementById('exportOutput');
         
         if (!exportOutput.value) {
@@ -372,19 +372,30 @@ class BlogPlanner {
             return;
         }
 
-        exportOutput.select();
-        document.execCommand('copy');
-        
-        // Visual feedback
-        const btn = document.getElementById('copyCreditsBtn');
-        const originalText = btn.textContent;
-        btn.textContent = '✓ Copied!';
-        btn.style.backgroundColor = '#10b981';
-        
-        setTimeout(() => {
-            btn.textContent = originalText;
-            btn.style.backgroundColor = '';
-        }, 2000);
+        try {
+            // Use modern Clipboard API
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                await navigator.clipboard.writeText(exportOutput.value);
+            } else {
+                // Fallback for older browsers
+                exportOutput.select();
+                document.execCommand('copy');
+            }
+            
+            // Visual feedback
+            const btn = document.getElementById('copyCreditsBtn');
+            const originalText = btn.textContent;
+            btn.textContent = '✓ Copied!';
+            btn.style.backgroundColor = '#10b981';
+            
+            setTimeout(() => {
+                btn.textContent = originalText;
+                btn.style.backgroundColor = '';
+            }, 2000);
+        } catch (err) {
+            console.error('Failed to copy to clipboard:', err);
+            alert('Failed to copy to clipboard. Please try selecting and copying manually.');
+        }
     }
 
     // Utility Functions
