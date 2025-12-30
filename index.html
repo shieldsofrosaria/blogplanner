@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SL Blog Planner</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>✨ Second Life Blog Planner</h1>
+            <p class="subtitle">Plan your blog posts and manage credits effortlessly</p>
+        </header>
+
+        <main>
+            <!-- Blog Posts Section -->
+            <section class="posts-section">
+                <div class="section-header">
+                    <h2>Blog Posts</h2>
+                    <button class="btn btn-primary" id="addPostBtn">+ New Post</button>
+                </div>
+                <div id="postsList" class="posts-list"></div>
+            </section>
+
+            <!-- Credits Management Section -->
+            <section class="credits-section">
+                <h2>Current Post Credits</h2>
+                <div id="currentPostTitle" class="current-post-title">Select a post to manage credits</div>
+                
+                <div id="creditsArea" class="credits-area" style="display: none;">
+                    <div class="credit-form">
+                        <h3>Add Credit</h3>
+                        <div class="form-group">
+                            <label for="creditType">Type:</label>
+                            <select id="creditType" class="form-control">
+                                <option value="Designer">Designer</option>
+                                <option value="Photographer">Photographer</option>
+                                <option value="Hair">Hair</option>
+                                <option value="Skin">Skin</option>
+                                <option value="Eyes">Eyes</option>
+                                <option value="Clothes">Clothes</option>
+                                <option value="Accessories">Accessories</option>
+                                <option value="Poses">Poses</option>
+                                <option value="Location">Location</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="creditBrand">Brand/Creator:</label>
+                            <input type="text" id="creditBrand" class="form-control" placeholder="e.g., FaMESHed">
+                        </div>
+                        <div class="form-group">
+                            <label for="creditItem">Item Name:</label>
+                            <input type="text" id="creditItem" class="form-control" placeholder="e.g., Summer Dress">
+                        </div>
+                        <div class="form-group">
+                            <label for="creditUrl">URL (optional):</label>
+                            <input type="url" id="creditUrl" class="form-control" placeholder="https://...">
+                        </div>
+                        <button class="btn btn-success" id="addCreditBtn">Add Credit</button>
+                    </div>
+
+                    <div class="credits-list">
+                        <h3>Credits List</h3>
+                        <div id="creditsList"></div>
+                    </div>
+
+                    <div class="export-section">
+                        <h3>Export Credits</h3>
+                        <div class="export-buttons">
+                            <button class="btn btn-primary" id="exportTextBtn">Export as Text</button>
+                            <button class="btn btn-primary" id="exportHtmlBtn">Export as HTML</button>
+                            <button class="btn btn-primary" id="copyCreditsBtn">Copy to Clipboard</button>
+                        </div>
+                        <textarea id="exportOutput" class="export-output" readonly placeholder="Exported credits will appear here..."></textarea>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modal for creating/editing post -->
+    <div id="postModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Create New Post</h2>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="postTitle">Post Title:</label>
+                    <input type="text" id="postTitle" class="form-control" placeholder="Enter blog post title">
+                </div>
+                <div class="form-group">
+                    <label for="postDate">Date:</label>
+                    <input type="date" id="postDate" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label for="postNotes">Notes:</label>
+                    <textarea id="postNotes" class="form-control" rows="4" placeholder="Add any notes or ideas for this post..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancelPostBtn">Cancel</button>
+                <button class="btn btn-primary" id="savePostBtn">Save Post</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
