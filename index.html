@@ -3,16 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SL Blog Planner</title>
+    <title>Blog Planner</title>
     <link rel="stylesheet" href="style.css?v=3">
 </head>
 <body>
     <div class="container">
         <!-- Sidebar Navigation -->
         <aside class="sidebar">
+            <div class="sidebar-logo">
+                <img src="https://i.ibb.co/fVX317sM/hornedheartlogo-green-20482.png" alt="Horned heart logo" class="logo-img" onclick="goToDashboard()" title="Return to Dashboard">
+            </div>
             <div class="sidebar-header">
-                <h2>SL Blog Planner</h2>
-                <p class="subtitle">Organize & Export Easily</p>
+                <h2>Welcome back, Graves!</h2>
+                <p class="subtitle" id="sidebar-datetime">--:--</p>
             </div>
             <nav class="nav-menu">
                 <button class="nav-btn" data-section="dashboard">
@@ -24,12 +27,15 @@
                 <button class="nav-btn" data-section="my-posts">
                     📋 My Posts
                 </button>
+                <button class="nav-btn" data-section="creator-library">
+                    📚 Creator Directory
+                </button>
                 <button class="nav-btn" data-section="settings">
                     ⚙️ Settings
                 </button>
             </nav>
             <div class="sidebar-footer">
-                <p>💚 Second Life Blogger</p>
+                <a class="sidebar-footer-link" href="https://shieldsofrosaria.github.io/grimly/" target="_blank" rel="noopener">🏡 return to hub ↗</a>
             </div>
         </aside>
 
@@ -37,7 +43,7 @@
         <main class="main-content">
             <!-- Top Navigation -->
             <header class="top-nav">
-                <h1>Blog Planner</h1>
+                <h1 id="section-title">Dashboard</h1>
                 <div class="top-nav-actions">
                     <span id="status-message" class="status-message"></span>
                 </div>
@@ -46,37 +52,11 @@
             <!-- Dashboard Section -->
             <section id="dashboard" class="section">
                 <div class="dashboard-container">
-                    <h2>Dashboard</h2>
-                    
-                    <!-- Stats Grid -->
-                    <div class="stats-grid">
-                        <div class="stat-card">
-                            <div class="stat-icon">📝</div>
-                            <div class="stat-value" id="stat-total-posts">0</div>
-                            <div class="stat-label">Total Posts</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-icon">🎁</div>
-                            <div class="stat-value" id="stat-total-sponsors">0</div>
-                            <div class="stat-label">Unique Sponsors</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-icon">👤</div>
-                            <div class="stat-value" id="stat-total-credits">0</div>
-                            <div class="stat-label">Unique Credits</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-icon">🏷️</div>
-                            <div class="stat-value" id="stat-total-tags">0</div>
-                            <div class="stat-label">Unique Tags</div>
-                        </div>
-                    </div>
-
                     <!-- Events & Deadlines -->
                     <div class="dashboard-section">
                         <div class="section-header">
                             <h3>📅 Events & Deadlines</h3>
-                            <button type="button" class="btn-primary btn-sm" onclick="openEventModal()">+ Add Event</button>
+                            <button type="button" class="btn-primary btn-sm" onclick="openEventModal()">+ Add Deadline</button>
                         </div>
                         <div id="events-list" class="events-list">
                             <p class="empty-state">No events or deadlines yet. Add one to get started!</p>
@@ -96,65 +76,130 @@
             <!-- New Post Section -->
             <section id="new-post" class="section active">
                 <div class="form-container">
-                    <h2>Plan Your Blog Post</h2>
-                    
                     <!-- Wizard Progress -->
                     <div class="wizard-progress">
                         <div class="wizard-step active" data-step="1">
                             <div class="step-number">1</div>
-                            <div class="step-label">Plan</div>
+                            <div class="step-label">🌅 Plan</div>
                         </div>
                         <div class="wizard-step" data-step="2">
                             <div class="step-number">2</div>
-                            <div class="step-label">Credits</div>
+                            <div class="step-label">📸 Content</div>
                         </div>
                         <div class="wizard-step" data-step="3">
                             <div class="step-number">3</div>
-                            <div class="step-label">Content</div>
+                            <div class="step-label">💚 Credits</div>
                         </div>
                         <div class="wizard-step" data-step="4">
                             <div class="step-number">4</div>
-                            <div class="step-label">Export</div>
+                            <div class="step-label">📤 Export</div>
                         </div>
                     </div>
 
                     <!-- Step 1: Plan -->
                     <div class="wizard-content active" data-step="1">
                     <fieldset class="form-section">
-                        <div class="section-heading">📍 Plan</div>
-                        <p class="info-text">Scratch pad for ideas and inspiration. Brainstorm your post concept here.</p>
-                        
-                        <div class="form-group">
-                            <label for="post-title">📝 Post Title</label>
-                            <input type="text" id="post-title" placeholder="e.g., Cozy Winter Night">
-                        </div>
-
-                        <div class="form-group">
-                            <label for="post-tags">🏷️ Tags (optional)</label>
-                            <input type="text" id="post-tags" placeholder="e.g., event, fashion, photography - comma-separated">
-                        </div>
-
                         <div class="form-group">
                             <label for="post-scene">🌅 Scene Description</label>
-                            <input type="text" id="post-scene" placeholder="e.g., Mountain cabin at sunset">
+                            <input type="text" id="post-scene" placeholder="Describe the scene (location, mood, time of day)">
                         </div>
 
                         <div class="form-group">
-                            <label for="post-concept">💡 Concept Details</label>
-                            <textarea id="post-concept" rows="4" placeholder="Detail your vision: mood, lighting, poses, special elements..."></textarea>
+                            <label for="notes-input">📝 Notes</label>
+                            <input type="text" id="notes-input" class="notes-input" placeholder="Add a quick note, then press Enter to save it">
+                            <ul id="notes-list" class="notes-list"></ul>
                         </div>
 
                         <div class="form-group">
-                            <label for="inspiration-images">🖼️ Inspiration/Reference Images</label>
-                            <input type="file" id="inspiration-images" accept="image/*" multiple>
+                            <label>💡 Inspiration/Reference Images</label>
+                            <div id="inspiration-upload-zone" class="image-upload-zone" ondrop="handleDrop(event, 'inspiration-images')" ondragover="handleDragOver(event, 'inspiration-upload-zone')" ondragleave="handleDragLeave(event, 'inspiration-upload-zone')">
+                                <div class="upload-zone-content">
+                                    <div class="upload-icon">🖼️</div>
+                                    <div class="upload-text">Drop images here or click to select</div>
+                                    <div class="upload-hint">Supports JPG, PNG (or paste into this box)</div>
+                                </div>
+                                <input type="file" id="inspiration-images" accept="image/*" class="file-input-hidden" multiple aria-label="Inspiration images upload" title="Select inspiration images to upload">
+                            </div>
                             <small>Upload multiple reference images to inspire your shoot</small>
                             <div id="inspiration-gallery" class="inspiration-gallery"></div>
                         </div>
                     </fieldset>
                     </div>
 
-                    <!-- Step 2: Credits (Sponsors & Credits) -->
+                    <!-- Step 2: Content (Image & Caption) -->
                     <div class="wizard-content" data-step="2">
+                    <fieldset class="form-section">
+                        <div class="section-heading">📝 Post Title</div>
+                        
+                        <div class="form-group">
+                            <label for="post-title" class="sr-only">Post Title</label>
+                            <input type="text" id="post-title" placeholder="Give the post a working title your readers will see">
+                        </div>
+                    </fieldset>
+
+                    <fieldset class="form-section">
+                        <div class="section-heading">📸 Blog Image</div>
+                        <p class="info-text">Upload your final edited blog image.</p>
+
+                        <div class="form-group">
+                            <div id="image-upload-zone" class="image-upload-zone" ondrop="handleDrop(event, 'blog-image')" ondragover="handleDragOver(event, 'image-upload-zone')" ondragleave="handleDragLeave(event, 'image-upload-zone')">
+                                <div class="upload-zone-content">
+                                    <div class="upload-icon">📁</div>
+                                    <div class="upload-text">Drop image here or click to select</div>
+                                    <div class="upload-hint">Supports JPG, PNG (or paste from clipboard with Ctrl+V)</div>
+                                </div>
+                                <input type="file" id="blog-image" accept="image/*" class="file-input-hidden" aria-label="Blog image upload" title="Select blog image to upload">
+                            </div>
+                            <small>JPG, PNG recommended. Will auto-upload to ImgBB if API key is set.</small>
+                            <div id="image-preview" class="image-preview"></div>
+                        </div>
+
+                        <div id="image-url-container" class="form-group hidden">
+                            <label for="hosted-image-url">Hosted Image URL</label>
+                            <div class="inline-row">
+                                <input type="text" id="hosted-image-url" readonly class="flex-1" placeholder="URL appears here after upload" aria-label="Hosted image URL">
+                                <button type="button" class="btn-secondary no-shrink" onclick="copyImageUrl()">📋 Copy</button>
+                            </div>
+                            <small>Use this URL to share your image online</small>
+                        </div>
+                        
+                    </fieldset>
+
+                    <fieldset class="form-section">
+                        <div class="section-heading">✍️ Caption</div>
+                        <p class="info-text">Write your caption with optional formatting.</p>
+                        
+                        <div class="form-group">
+                            <div class="formatting-toolbar" role="toolbar" aria-label="Text formatting options">
+                                <button type="button" class="fmt-btn" onclick="formatCaption('bold')" title="Bold" aria-label="Bold"><b>B</b></button>
+                                <button type="button" class="fmt-btn" onclick="formatCaption('italic')" title="Italic" aria-label="Italic"><i>I</i></button>
+                                <button type="button" class="fmt-btn" onclick="formatCaption('underline')" title="Underline" aria-label="Underline"><u>U</u></button>
+                                <button type="button" class="fmt-btn" onclick="formatCaption('link')" title="Add Link" aria-label="Add hyperlink">🔗</button>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="post-caption" class="sr-only">Caption text</label>
+                            <textarea id="post-caption" rows="6" placeholder="Draft the caption you will reuse across platforms. Use the toolbar to add styling or links."></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="post-tags">🏷️ Tags (optional)</label>
+                            <input type="text" id="post-tags" placeholder="Comma-separated tags to group this post (e.g., event, fashion, photography)">
+                            <div class="hashtag-presets">
+                                <small>Quick hashtags:</small>
+                                <button type="button" class="chip hashtag-chip" onclick="insertHashtag('#SecondLife')">Second Life</button>
+                                <button type="button" class="chip hashtag-chip" onclick="insertHashtag('#SLFurry')">SL Furry</button>
+                                <button type="button" class="chip hashtag-chip" onclick="insertHashtag('#VirtualPhotography')">Photography</button>
+                                <button type="button" class="chip hashtag-chip" onclick="insertHashtag('#SLFashion')">Fashion</button>
+                                <button type="button" class="chip hashtag-chip" onclick="insertHashtag('#SLBlogger')">Blogger</button>
+                            </div>
+                        </div>
+                    </fieldset>
+                    </div>
+
+                    <!-- Step 3: Credits (Sponsors & Credits) -->
+                    <div class="wizard-content" data-step="3">
                     <fieldset class="form-section">
                         <div class="section-heading">💚 Sponsors</div>
                         <p class="info-text">Add items you received as sponsors (gifts from creators/stores).</p>
@@ -186,7 +231,7 @@
                         <div id="avatars-list" class="avatars-container">
                             <div class="avatar-card">
                                 <div class="avatar-card-header">
-                                    <input type="text" name="avatar-name" aria-label="Avatar name" placeholder="Avatar Name" class="avatar-name" oninput="toggleAvatarDetails(this)">
+                                    <input type="text" name="avatar-name" aria-label="Avatar name" placeholder="Avatar Name or Nickname" class="avatar-name" oninput="toggleAvatarDetails(this)">
                                     <button type="button" class="btn-remove" onclick="removeAvatar(this)">✕</button>
                                 </div>
                                 
@@ -199,68 +244,68 @@
                                     
                                     <div class="avatar-part-row">
                                         <div class="col-part"><span class="part-label">Mod/Skin</span></div>
-                                        <input type="text" name="avatar-mod-creator" aria-label="Mod/Skin creator" placeholder="Creator" class="col-creator">
-                                        <input type="text" name="avatar-mod-link" aria-label="Mod/Skin store link" placeholder="Store link" class="col-link">
+                                        <input type="text" name="avatar-mod-creator" aria-label="Mod/Skin creator" placeholder="Creator or mod name" class="col-creator">
+                                        <input type="text" name="avatar-mod-link" aria-label="Mod/Skin store link" placeholder="Store link or SLurl" class="col-link">
                                     </div>
                                     
                                     <div class="avatar-part-row">
                                         <div class="col-part"><span class="part-label">Body</span></div>
-                                        <input type="text" name="avatar-body-creator" aria-label="Body creator" placeholder="Creator" class="col-creator">
-                                        <input type="text" name="avatar-body-link" aria-label="Body store link" placeholder="Store link" class="col-link">
+                                        <input type="text" name="avatar-body-creator" aria-label="Body creator" placeholder="Creator or mod name" class="col-creator">
+                                        <input type="text" name="avatar-body-link" aria-label="Body store link" placeholder="Store link or SLurl" class="col-link">
                                     </div>
                                     
                                     <div class="avatar-part-row">
                                         <div class="col-part"><span class="part-label">Head</span></div>
-                                        <input type="text" name="avatar-head-creator" aria-label="Head creator" placeholder="Creator" class="col-creator">
-                                        <input type="text" name="avatar-head-link" aria-label="Head store link" placeholder="Store link" class="col-link">
+                                        <input type="text" name="avatar-head-creator" aria-label="Head creator" placeholder="Creator or mod name" class="col-creator">
+                                        <input type="text" name="avatar-head-link" aria-label="Head store link" placeholder="Store link or SLurl" class="col-link">
                                     </div>
                                     
                                     <div class="avatar-part-row">
                                         <div class="col-part"><span class="part-label">Hands</span></div>
-                                        <input type="text" name="avatar-hands-creator" aria-label="Hands creator" placeholder="Creator" class="col-creator">
-                                        <input type="text" name="avatar-hands-link" aria-label="Hands store link" placeholder="Store link" class="col-link">
+                                        <input type="text" name="avatar-hands-creator" aria-label="Hands creator" placeholder="Creator or mod name" class="col-creator">
+                                        <input type="text" name="avatar-hands-link" aria-label="Hands store link" placeholder="Store link or SLurl" class="col-link">
                                     </div>
                                     
                                     <div class="avatar-part-row">
                                         <div class="col-part"><span class="part-label">Feet</span></div>
-                                        <input type="text" name="avatar-feet-creator" aria-label="Feet creator" placeholder="Creator" class="col-creator">
-                                        <input type="text" name="avatar-feet-link" aria-label="Feet store link" placeholder="Store link" class="col-link">
+                                        <input type="text" name="avatar-feet-creator" aria-label="Feet creator" placeholder="Creator or mod name" class="col-creator">
+                                        <input type="text" name="avatar-feet-link" aria-label="Feet store link" placeholder="Store link or SLurl" class="col-link">
                                     </div>
                                     
                                     <div class="avatar-part-row">
                                         <div class="col-part"><span class="part-label">Tail</span></div>
-                                        <input type="text" name="avatar-tail-creator" aria-label="Tail creator" placeholder="Creator" class="col-creator">
-                                        <input type="text" name="avatar-tail-link" aria-label="Tail store link" placeholder="Store link" class="col-link">
+                                        <input type="text" name="avatar-tail-creator" aria-label="Tail creator" placeholder="Creator or mod name" class="col-creator">
+                                        <input type="text" name="avatar-tail-link" aria-label="Tail store link" placeholder="Store link or SLurl" class="col-link">
                                     </div>
                                     
                                     <div class="avatar-part-row">
                                         <div class="col-part"><span class="part-label">Ears</span></div>
-                                        <input type="text" name="avatar-ears-creator" aria-label="Ears creator" placeholder="Creator" class="col-creator">
-                                        <input type="text" name="avatar-ears-link" aria-label="Ears store link" placeholder="Store link" class="col-link">
+                                        <input type="text" name="avatar-ears-creator" aria-label="Ears creator" placeholder="Creator or mod name" class="col-creator">
+                                        <input type="text" name="avatar-ears-link" aria-label="Ears store link" placeholder="Store link or SLurl" class="col-link">
                                     </div>
                                     
                                     <div class="avatar-part-row">
                                         <div class="col-part"><span class="part-label">Eyes</span></div>
-                                        <input type="text" name="avatar-eyes-creator" aria-label="Eyes creator" placeholder="Creator" class="col-creator">
-                                        <input type="text" name="avatar-eyes-link" aria-label="Eyes store link" placeholder="Store link" class="col-link">
+                                        <input type="text" name="avatar-eyes-creator" aria-label="Eyes creator" placeholder="Creator or mod name" class="col-creator">
+                                        <input type="text" name="avatar-eyes-link" aria-label="Eyes store link" placeholder="Store link or SLurl" class="col-link">
                                     </div>
                                     
                                     <div class="avatar-part-row">
                                         <div class="col-part"><span class="part-label">Hair</span></div>
-                                        <input type="text" name="avatar-hair-creator" aria-label="Hair creator" placeholder="Creator" class="col-creator">
-                                        <input type="text" name="avatar-hair-link" aria-label="Hair store link" placeholder="Store link" class="col-link">
+                                        <input type="text" name="avatar-hair-creator" aria-label="Hair creator" placeholder="Creator or mod name" class="col-creator">
+                                        <input type="text" name="avatar-hair-link" aria-label="Hair store link" placeholder="Store link or SLurl" class="col-link">
                                     </div>
                                     
                                     <div class="avatar-part-row">
                                         <div class="col-part"><span class="part-label">Nails/Claws</span></div>
-                                        <input type="text" name="avatar-nails-creator" aria-label="Nails/Claws creator" placeholder="Creator" class="col-creator">
-                                        <input type="text" name="avatar-nails-link" aria-label="Nails/Claws store link" placeholder="Store link" class="col-link">
+                                        <input type="text" name="avatar-nails-creator" aria-label="Nails/Claws creator" placeholder="Creator or mod name" class="col-creator">
+                                        <input type="text" name="avatar-nails-link" aria-label="Nails/Claws store link" placeholder="Store link or SLurl" class="col-link">
                                     </div>
                                 </div>
                                 
                                 <div class="avatar-cosmetics-section">
                                     <label for="avatar-cosmetics">Additional Cosmetics</label>
-                                    <textarea name="avatar-cosmetics" aria-label="Cosmetics" placeholder="List any additional items (jewelry, tattoos, etc.) - one per line" class="avatar-cosmetics" rows="2"></textarea>
+                                    <textarea id="avatar-cosmetics" name="avatar-cosmetics" aria-label="Cosmetics" placeholder="List extra items (jewelry, tattoos, accessories) — one per line" class="avatar-cosmetics" rows="2"></textarea>
                                 </div>
                             </div>
                         </div>
@@ -270,7 +315,7 @@
                     <fieldset class="form-section">
                         <div class="section-heading">✨ Credits</div>
                         <p class="info-text">Add items you purchased or used (avatar, outfit, props, etc).</p>
-                        
+
                         <div id="credits-list" class="credits-list">
                             <div class="credit-row">
                                 <input type="text" name="credit-store" aria-label="Credit store" placeholder="Creator/Store" class="credit-store" list="saved-stores">
@@ -288,62 +333,12 @@
                             </div>
                         </div>
                         <button type="button" class="btn-secondary" onclick="addCredit()">+ Add Credit</button>
-                    </fieldset>
-                    </div>
-
-                    <!-- Step 3: Content (Image & Caption) -->
-                    <div class="wizard-content" data-step="3">
-                    <fieldset class="form-section">
-                        <div class="section-heading">📸 Blog Image</div>
-                        <p class="info-text">Upload your final edited blog image.</p>
-                        
-                        <div class="form-group">
-                            <label for="blog-image">Upload Image</label>
-                            <input type="file" id="blog-image" accept="image/*">
-                            <small>JPG, PNG recommended. Will auto-upload to ImgBB if API key is set.</small>
-                            <div id="image-preview" class="image-preview"></div>
-                        </div>
-
-                        <div id="image-url-container" class="form-group hidden">
-                            <label for="hosted-image-url">Hosted Image URL</label>
-                            <div class="inline-row">
-                                <input type="text" id="hosted-image-url" readonly class="flex-1" placeholder="https://..." aria-label="Hosted image URL">
-                                <button type="button" class="btn-secondary no-shrink" onclick="copyImageUrl()">📋 Copy</button>
-                            </div>
-                            <small>Use this URL to share your image online</small>
+                    
+                        <div class="form-actions">
+                            <button type="button" class="btn-primary" onclick="savePost()">💾 Save Post</button>
+                            <button type="button" class="btn-danger" onclick="clearForm()">🗑️ Clear</button>
                         </div>
                     </fieldset>
-
-                    <fieldset class="form-section">
-                        <div class="section-heading">✍️ Caption</div>
-                        
-                        <div class="form-group">
-                            <div class="formatting-toolbar" role="toolbar" aria-label="Text formatting options">
-                                <button type="button" class="fmt-btn" onclick="formatCaption('bold')" title="Bold" aria-label="Bold"><b>B</b></button>
-                                <button type="button" class="fmt-btn" onclick="formatCaption('italic')" title="Italic" aria-label="Italic"><i>I</i></button>
-                                <button type="button" class="fmt-btn" onclick="formatCaption('underline')" title="Underline" aria-label="Underline"><u>U</u></button>
-                                <button type="button" class="fmt-btn" onclick="formatCaption('link')" title="Add Link" aria-label="Add hyperlink">🔗</button>
-                            </div>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="post-caption" class="sr-only">Caption text</label>
-                            <textarea id="post-caption" rows="6" placeholder="Write the text that will accompany your blog post..."></textarea>
-                            <div class="hashtag-presets">
-                                <small>Quick hashtags:</small>
-                                <button type="button" class="chip hashtag-chip" onclick="insertHashtag('#SecondLife')">Second Life</button>
-                                <button type="button" class="chip hashtag-chip" onclick="insertHashtag('#SLFurry')">SL Furry</button>
-                                <button type="button" class="chip hashtag-chip" onclick="insertHashtag('#VirtualPhotography')">Photography</button>
-                                <button type="button" class="chip hashtag-chip" onclick="insertHashtag('#SLFashion')">Fashion</button>
-                                <button type="button" class="chip hashtag-chip" onclick="insertHashtag('#SLBlogger')">Blogger</button>
-                            </div>
-                        </div>
-                    </fieldset>
-
-                    <div class="form-actions">
-                        <button type="button" class="btn-primary" onclick="savePost()">💾 Save Post</button>
-                        <button type="button" class="btn-danger" onclick="clearForm()">🗑️ Clear</button>
-                    </div>
                     </div>
 
                     <!-- Step 4: Export (inline) -->
@@ -353,7 +348,7 @@
 
                         <div class="export-tabs">
                             <button class="export-tab-btn active" data-platform="flickr">Flickr</button>
-                            <button class="export-tab-btn" data-platform="bluesky">BlueSky</button>
+                            <button class="export-tab-btn" data-platform="bluesky">Bluesky</button>
                             <button class="export-tab-btn" data-platform="youtube">YouTube</button>
                             <button class="export-tab-btn" data-platform="primfeed">Primfeed</button>
                             <button class="export-tab-btn" data-platform="blog">Blog</button>
@@ -372,29 +367,7 @@
                             <button type="button" class="btn-tiny" onclick="copySection('sponsors')">Sponsors</button>
                             <button type="button" class="btn-tiny" onclick="copySection('credits')">Credits</button>
                             <button type="button" class="btn-tiny" onclick="copySection('caption')">Caption</button>
-                        </div>
-
-                        <div id="bluesky-export-settings" class="export-platform-settings hidden">
-                            <div class="collapsible-header">
-                                <div class="section-heading section-heading-tight">💙 BlueSky Settings</div>
-                                <button type="button" class="btn-ghost" aria-expanded="true" onclick="toggleBlueskySettings(this)">Hide</button>
-                            </div>
-                            <p class="info-text info-tight">Only used for the BlueSky export tab.</p>
-
-                            <div class="collapsible-body">
-                                <div class="form-group">
-                                    <label for="bluesky-link">Blog Post Link</label>
-                                    <input type="url" id="bluesky-link" placeholder="https://www.flickr.com/photos/... or https://yourname.tumblr.com/post/...">
-                                    <small>Link to your Flickr or Tumblr blog post (used in BlueSky export)</small>
-                                </div>
-
-                                <div class="form-group">
-                                    <label for="sponsor-mentions">Sponsor @Handles for BlueSky</label>
-                                    <small>Enter @ mentions for sponsors (e.g., @store1 @store2) to tag them in your BlueSky reply post</small>
-                                    <textarea id="sponsor-mentions" rows="2" placeholder="@store1 @store2 @creator3"></textarea>
-                                    <button type="button" class="btn-secondary mt-10" onclick="copySponsorMentions()">📋 Copy</button>
-                                </div>
-                            </div>
+                            <button type="button" class="btn-tiny" id="copy-tags-btn" onclick="copyTagsForFlickrTumblr()" title="Copy tags for Flickr/Tumblr">Tags</button>
                         </div>
 
                         <div id="export-content" class="export-content">
@@ -404,6 +377,29 @@
                             </div>
                             <label for="export-text" class="sr-only">Export text</label>
                             <textarea id="export-text" readonly rows="12"></textarea>
+                        </div>
+
+                        <div id="bluesky-export-settings" class="export-platform-settings hidden">
+                            <div class="collapsible-header">
+                                <div class="section-heading section-heading-tight">💙 Bluesky Settings</div>
+                                <button type="button" class="btn-ghost" aria-expanded="true" onclick="toggleBlueskySettings(this)">Hide</button>
+                            </div>
+                            <p class="info-text info-tight">Caption field for your Bluesky post.</p>
+
+                            <div class="collapsible-body">
+                                <div class="form-group">
+                                    <label for="bluesky-link">Blog Post Link</label>
+                                    <input type="url" id="bluesky-link" placeholder="Paste the link to the full post (Flickr/Tumblr/blog) you want to point Bluesky to">
+                                    <small>Use the permalink to your primary post so the Bluesky reply can reference it.</small>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="sponsor-mentions">Sponsor @Handles for Bluesky</label>
+                                    <small>Enter @ mentions for sponsors so you can tag them in your Bluesky reply post.</small>
+                                    <textarea id="sponsor-mentions" rows="2" placeholder="Space-separated @handles (e.g., @store1 @store2)"></textarea>
+                                    <button type="button" class="btn-secondary mt-10" onclick="copySponsorMentions()">📋 Copy</button>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="export-actions">
@@ -429,18 +425,29 @@
             <!-- My Posts Section -->
             <section id="my-posts" class="section">
                 <div class="posts-container">
-                    <h2>My Blog Posts</h2>
+                    <div class="section-stats">
+                        <div class="stat-item">
+                            <span class="stat-icon">📝</span>
+                            <span class="stat-value" id="stat-total-posts">0</span>
+                            <span class="stat-label">Total Posts</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-icon">🏷️</span>
+                            <span class="stat-value" id="stat-total-tags">0</span>
+                            <span class="stat-label">Unique Tags</span>
+                        </div>
+                    </div>
 
                     <div class="posts-split">
                         <div class="panel">
-                            <div class="section-heading">📋 Saved Posts</div>
+                            <h3 class="section-heading">📋 Saved Posts</h3>
                             <p class="info-text">Everything you have saved lives here. Edit, delete, or export any post.</p>
 
                             <div class="posts-controls">
                                 <div class="search-sort-row">
                                     <div class="search-group">
                                         <label for="posts-search" class="sr-only">Search posts</label>
-                                        <input type="search" id="posts-search" placeholder="Search by title" oninput="setPostsSearch(this.value)">
+                                        <input type="search" id="posts-search" placeholder="Search saved posts by title" oninput="setPostsSearch(this.value)">
                                     </div>
                                     <div class="sort-group">
                                         <label for="posts-sort" class="sr-only">Sort posts</label>
@@ -470,86 +477,136 @@
                                 </div>
                             </div>
 
-                            <div id="posts-list" class="posts-grid">
-                                <p class="empty-state">No posts yet. Create your first one!</p>
-                            </div>
-                        </div>
+                            <div id="posts-list" class="posts-grid"></div>
 
-                        <div class="panel">
-                            <div class="section-heading">📚 Creator Library</div>
-                            <p class="info-text">Auto-collected sponsors & credits from your saved posts. Click to copy names or links.</p>
-                            <div id="library-list" class="library-grid">
-                                <p class="empty-state">No saved sponsors or credits yet. Save a post to populate your library.</p>
-                            </div>
                         </div>
                     </div>
+                </div>
+            </section>
+
+            <!-- Creator Directory Section -->
+            <section id="creator-library" class="section">
+                <div class="settings-container">
+                    <div class="section-stats">
+                        <div class="stat-item">
+                            <span class="stat-icon">🎁</span>
+                            <span class="stat-value" id="stat-total-sponsors">0</span>
+                            <span class="stat-label">Unique Sponsors</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-icon">👤</span>
+                            <span class="stat-value" id="stat-total-credits">0</span>
+                            <span class="stat-label">Unique Creators</span>
+                        </div>
+                    </div>
+                    
+                    <fieldset class="form-section">
+                        <div class="section-heading">📚 Creator Directory</div>
+                        <p class="info-text">Auto-collected sponsors & creators from your saved posts. Click to copy names or links.</p>
+                        <div class="library-add">
+                            <input type="text" id="library-add-name" class="library-input" placeholder="Creator/Store name" aria-label="Creator or store name">
+                            <input type="url" id="library-add-link" class="library-input" placeholder="Store link (optional)" aria-label="Creator or store link">
+                            <select id="library-add-type" class="library-select" aria-label="Store type">
+                                <option value="sponsor">Sponsor</option>
+                                <option value="creator">Creator</option>
+                            </select>
+                            <input type="text" id="library-add-tags" class="library-input" placeholder="Tags (comma separated)" aria-label="Tags">
+                            <button type="button" class="library-link-btn" onclick="addLibraryEntry()">Add</button>
+                        </div>
+                        <div class="library-toolbar">
+                            <input type="search" id="library-search" class="library-search" placeholder="Search by name or tag" oninput="setLibraryFilter(this.value)">
+                            <button type="button" class="library-link-btn" onclick="setLibraryFilter('')">Clear</button>
+                        </div>
+                        <div id="library-list" class="library-grid">
+                            <p class="empty-state">No saved sponsors or creators yet. Save a post to populate your directory.</p>
+                        </div>
+                    </fieldset>
                 </div>
             </section>
 
             <!-- Settings Section -->
             <section id="settings" class="section">
                 <div class="settings-container">
-                    <h2>Settings</h2>
-                    
-                    <fieldset class="form-section">
-                        <div class="section-heading">👤 Your Bio (Auto-included in all exports)</div>
-                        <p class="info-text">Enter your permanent bio once. It will be automatically added to every platform export.</p>
-                        
-                        <div class="form-group">
-                            <label for="author-bio">Your Bio (HTML supported)</label>
-                            <textarea id="author-bio" rows="3" placeholder="e.g., <b>GRAVES GHOSTLY</b> 🐺💚 <a href='https://gravesghostly.blog/'>Blog</a> ✦ <a href='https://bsky.app/profile/gravesghostly.blog'>Bluesky</a> ✦ <a href='https://www.youtube.com/@gravesghostly'>Youtube</a>"></textarea>
+                    <!-- Data Management (Always expanded at top) -->
+                    <fieldset class="form-section settings-section-data-management" data-section="data-management">
+                        <div class="settings-section-header">
+                            <div class="section-heading">📊 Data Management</div>
                         </div>
-
-                        <button type="button" class="btn-primary" onclick="saveSettings()">💾 Save Bio</button>
-                    </fieldset>
-                    
-                    <fieldset class="form-section">
-                        <div class="section-heading">#️⃣ Hashtag Presets</div>
-                        <p class="info-text">Customize the quick-insert hashtags shown when writing captions. One per line.</p>
-                        
-                        <div class="form-group">
-                            <label for="hashtag-presets">Your Hashtag Presets</label>
-                            <textarea id="hashtag-presets" rows="8" placeholder="#SecondLife\n#SLBlogger\n#VirtualPhotography\n#Furry\n#Fashion"></textarea>
-                            <small>Tip: Include the # symbol with each tag. Use these for Flickr, Tumblr, and other platforms. One per line.</small>
-                        </div>
-
-                        <button type="button" class="btn-primary" onclick="saveSettings()">💾 Save Hashtags</button>
-                    </fieldset>
-                    
-                    <fieldset class="form-section">
-                        <div class="section-heading">🔌 API Configuration</div>
-                        <p class="info-text">Configure your backup and image upload services (optional).</p>
-                        
-                        <form onsubmit="return false;">
-                            <div class="form-group">
-                                <label for="jsonbin-key">JSONbin API Key <span id="jsonbin-status" class="api-status"></span></label>
-                                <input type="password" id="jsonbin-key" placeholder="Your JSONbin secret key" autocomplete="off">
-                                <small><a href="https://jsonbin.io/" target="_blank" rel="noopener">Get your key here →</a></small>
-                            </div>
-
-                            <div class="form-group">
-                                <label for="imgbb-key">ImgBB API Key <span id="imgbb-status" class="api-status"></span></label>
-                                <input type="password" id="imgbb-key" placeholder="Your ImgBB API key" autocomplete="off">
-                                <small><a href="https://imgbb.com/" target="_blank" rel="noopener">Get your key here →</a></small>
-                            </div>
-
-                            <button type="button" class="btn-primary" onclick="saveSettings()">💾 Save Settings</button>
-                            <div id="settings-save-status" class="status-strong"></div>
-                        </form>
-                    </fieldset>
-
-                    <fieldset class="form-section">
-                        <div class="section-heading">📊 Data Management</div>
                         <p class="info-text">Backup your data locally or sync to cloud.</p>
 
-                        <div class="grid-stack">
-                            <button type="button" class="btn-primary" onclick="syncToCloud()">☁️ Sync to Cloud (JSONbin)</button>
+                        <div class="data-management-grid">
+                            <button type="button" class="btn-primary" onclick="syncToCloud()">☁️ Sync to Cloud</button>
                             <button type="button" class="btn-secondary" onclick="loadFromCloud()">⬇️ Load from Cloud</button>
                             <button type="button" class="btn-secondary" onclick="exportAllData()">💾 Export to File</button>
                             <button type="button" class="btn-danger" onclick="clearAllData()">🗑️ Clear All Data</button>
                         </div>
 
                         <div id="cloud-sync-status" class="text-muted-small"></div>
+                    </fieldset>
+
+                    <!-- Bio Section (Collapsible) -->
+                    <fieldset class="form-section settings-section-collapsible" data-section="bio">
+                        <div class="settings-section-header settings-section-toggle" onclick="toggleSettingsSection(this)">
+                            <div class="section-heading">👤 Your Bio</div>
+                            <span class="section-toggle">▼</span>
+                        </div>
+                        <div class="settings-section-content">
+                            <p class="info-text">Enter your permanent bio once. It will be automatically added to every platform export.</p>
+                            
+                            <div class="form-group">
+                                <label for="author-bio">Your Bio Text</label>
+                                <textarea id="author-bio" rows="3" placeholder="e.g., <b>GRAVES GHOSTLY</b> 🐺💚 <a href='https://gravesghostly.blog/'>Blog</a> ✦ <a href='https://bsky.app/profile/gravesghostly.blog'>Bluesky</a> ✦ <a href='https://www.youtube.com/@gravesghostly'>Youtube</a>"></textarea>
+                            </div>
+
+                            <button type="button" class="btn-primary" onclick="saveSettings()">💾 Save Bio</button>
+                        </div>
+                    </fieldset>
+                    
+                    <!-- Hashtag Presets Section (Collapsible) -->
+                    <fieldset class="form-section settings-section-collapsible" data-section="hashtags">
+                        <div class="settings-section-header settings-section-toggle" onclick="toggleSettingsSection(this)">
+                            <div class="section-heading">#️⃣ Hashtag Presets</div>
+                            <span class="section-toggle">▼</span>
+                        </div>
+                        <div class="settings-section-content">
+                            <p class="info-text">Customize the quick-insert hashtags shown when writing captions. One per line.</p>
+                            
+                            <div class="form-group">
+                                <label for="hashtag-presets">Your Hashtag Presets</label>
+                                <textarea id="hashtag-presets" rows="8" placeholder="#SecondLife\n#SLBlogger\n#VirtualPhotography\n#Furry\n#Fashion"></textarea>
+                                <small>Tip: Include the # symbol with each tag. Use these for Flickr, Tumblr, and other platforms. One per line.</small>
+                            </div>
+
+                            <button type="button" class="btn-primary" onclick="saveSettings()">💾 Save Hashtags</button>
+                        </div>
+                    </fieldset>
+                    
+                    <!-- API Configuration Section (Collapsible) -->
+                    <fieldset class="form-section settings-section-collapsible" data-section="api">
+                        <div class="settings-section-header settings-section-toggle" onclick="toggleSettingsSection(this)">
+                            <div class="section-heading">🔌 API Configuration</div>
+                            <span class="section-toggle">▼</span>
+                        </div>
+                        <div class="settings-section-content">
+                            <p class="info-text">Configure your backup and image upload services (optional).</p>
+                            
+                            <form onsubmit="return false;">
+                                <div class="form-group">
+                                    <label for="jsonbin-key">JSONbin API Key <span id="jsonbin-status" class="api-status"></span></label>
+                                    <input type="password" id="jsonbin-key" placeholder="Your JSONbin secret key" autocomplete="off">
+                                    <small><a href="https://jsonbin.io/" target="_blank" rel="noopener">Get your key here →</a></small>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="imgbb-key">ImgBB API Key <span id="imgbb-status" class="api-status"></span></label>
+                                    <input type="password" id="imgbb-key" placeholder="Your ImgBB API key" autocomplete="off">
+                                    <small><a href="https://imgbb.com/" target="_blank" rel="noopener">Get your key here →</a></small>
+                                </div>
+
+                                <button type="button" class="btn-primary" onclick="saveSettings()">💾 Save Settings</button>
+                                <div id="settings-save-status" class="status-strong"></div>
+                            </form>
+                        </div>
                     </fieldset>
                 </div>
             </section>
@@ -558,37 +615,119 @@
 
     <!-- Event Modal -->
     <div id="event-modal" class="modal">
-        <div class="modal-content modal-small">
+        <div class="modal-content">
             <button class="modal-close" onclick="closeEventModal()">&times;</button>
-            <h2 id="event-modal-title">Add Event</h2>
+            <h2 id="event-modal-title">Add Deadline</h2>
             
             <div class="form-group">
-                <label for="event-name">Event Name</label>
-                <input type="text" id="event-name" placeholder="e.g., Fashion Week Deadline">
-            </div>
-
-            <div class="form-group">
-                <label for="event-date">Date</label>
-                <input type="date" id="event-date">
-            </div>
-
-            <div class="form-group">
-                <label for="event-type">Type</label>
-                <select id="event-type">
-                    <option value="deadline">Deadline</option>
-                    <option value="event">Event</option>
-                    <option value="reminder">Reminder</option>
+                <label for="deadline-type">Type</label>
+                <select id="deadline-type" onchange="updateDeadlineForm()">
+                    <option value="sponsor">Sponsor Deadline</option>
+                    <option value="event-deadline">Event Deadline</option>
+                    <option value="event">Scheduled Event</option>
                 </select>
             </div>
 
             <div class="form-group">
-                <label for="event-notes">Notes (optional)</label>
-                <textarea id="event-notes" rows="3" placeholder="Additional details..."></textarea>
+                <label for="deadline-name">Name/Title *</label>
+                <input type="text" id="deadline-name" placeholder="e.g., Fashion Week Submission">
+            </div>
+
+            <!-- Sponsor Deadline Fields -->
+            <div class="form-group deadline-sponsor-group" id="deadline-sponsor-group">
+                <label for="deadline-sponsor">Sponsors *</label>
+                <input type="text" id="deadline-sponsor" placeholder="Sponsor or store name" class="deadline-sponsor-field">
+            </div>
+
+            <div class="form-group deadline-sponsor-group" id="deadline-sponsor-image-group">
+                <label for="deadline-sponsor-image">Product/Advertisement Image (optional)</label>
+                <div id="sponsor-image-upload-zone" class="image-upload-zone" ondrop="handleDrop(event, 'deadline-sponsor-image')" ondragover="handleDragOver(event, 'sponsor-image-upload-zone')" ondragleave="handleDragLeave(event, 'sponsor-image-upload-zone')">
+                    <div class="upload-zone-content">
+                        <div class="upload-icon">📦</div>
+                        <div class="upload-text">Drop image here or click to select</div>
+                        <div class="upload-hint">Product photo or advertisement</div>
+                    </div>
+                    <input type="file" id="deadline-sponsor-image" accept="image/*" class="file-input-hidden" aria-label="Sponsor product image upload" title="Select sponsor product image">
+                </div>
+                <div id="sponsor-image-preview" class="image-preview"></div>
+            </div>
+
+            <!-- Event Deadline Fields -->
+            <div class="form-group deadline-event-deadline-group-hidden" id="deadline-event-deadline-group">
+                <label for="deadline-event-name">Event Name *</label>
+                <input type="text" id="deadline-event-name" placeholder="Event name">
+            </div>
+
+            <div class="form-group deadline-event-deadline-group-hidden" id="deadline-event-deadline-image-group">
+                <label for="deadline-event-deadline-image">Product/Advertisement Image (optional)</label>
+                <div id="event-deadline-image-upload-zone" class="image-upload-zone" ondrop="handleDrop(event, 'deadline-event-deadline-image')" ondragover="handleDragOver(event, 'event-deadline-image-upload-zone')" ondragleave="handleDragLeave(event, 'event-deadline-image-upload-zone')">
+                    <div class="upload-zone-content">
+                        <div class="upload-icon">📦</div>
+                        <div class="upload-text">Drop image here or click to select</div>
+                        <div class="upload-hint">Product photo or advertisement</div>
+                    </div>
+                    <input type="file" id="deadline-event-deadline-image" accept="image/*" class="file-input-hidden" aria-label="Event deadline product image upload" title="Select product image">
+                </div>
+                <div id="event-deadline-image-preview" class="image-preview"></div>
+            </div>
+
+            <!-- Scheduled Event Logging Fields -->
+            <div class="form-group deadline-event-info-group-hidden" id="deadline-event-info-group">
+                <label for="deadline-event-date">Event Date *</label>
+                <input type="date" id="deadline-event-date">
+            </div>
+
+            <div class="form-group deadline-event-info-group-hidden" id="deadline-event-theme-group">
+                <label for="deadline-event-theme">Theme (optional)</label>
+                <input type="text" id="deadline-event-theme" placeholder="e.g., Winter Wonderland, Cyberpunk">
+            </div>
+
+            <div class="form-group deadline-event-info-group-hidden" id="deadline-event-image-group">
+                <label for="deadline-event-image">Event Logo/Thumbnail or Advertisement (optional)</label>
+                <div id="event-image-upload-zone" class="image-upload-zone" ondrop="handleDrop(event, 'deadline-event-image')" ondragover="handleDragOver(event, 'event-image-upload-zone')" ondragleave="handleDragLeave(event, 'event-image-upload-zone')">
+                    <div class="upload-zone-content">
+                        <div class="upload-icon">🖼️</div>
+                        <div class="upload-text">Drop image here or click to select</div>
+                        <div class="upload-hint">Event logo, thumbnail, or promotional image</div>
+                    </div>
+                    <input type="file" id="deadline-event-image" accept="image/*" class="file-input-hidden" aria-label="Event image upload" title="Select event image">
+                </div>
+                <div id="event-image-preview" class="image-preview"></div>
+            </div>
+
+            <!-- Common Deadline Fields -->
+            <div class="form-group deadline-date-group" id="deadline-date-group">
+                <label for="deadline-date">Due Date *</label>
+                <input type="date" id="deadline-date">
+            </div>
+
+            <div class="form-group">
+                <label for="deadline-priority">Priority</label>
+                <select id="deadline-priority">
+                    <option value="low">Low</option>
+                    <option value="medium" selected>Medium</option>
+                    <option value="high">High</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="deadline-notes">Notes (optional)</label>
+                <textarea id="deadline-notes" rows="3" placeholder="Additional details or notes"></textarea>
+            </div>
+
+            <div class="form-group deadline-post-group" id="deadline-post-group">
+                <label for="deadline-post-id">Link to Post (optional)</label>
+                <div class="deadline-post-row">
+                    <select id="deadline-post-id" class="flex-1">
+                        <option value="">None - Create new post instead</option>
+                    </select>
+                    <button type="button" class="btn-secondary btn-sm" onclick="createPostFromDeadline()">+ Create</button>
+                </div>
             </div>
 
             <div class="modal-actions">
                 <button class="btn-secondary" onclick="closeEventModal()">Cancel</button>
-                <button class="btn-primary" onclick="saveEvent()">Save Event</button>
+                <button class="btn-primary" onclick="saveDeadline()">Save Deadline</button>
             </div>
         </div>
     </div>

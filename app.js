@@ -27,9 +27,18 @@ let inspirationImages = [];
 let currentWizardStep = 1;
 const totalWizardSteps = 4;
 let savedLibrary = { stores: [] }; // Saved creators/stores library
+let libraryFilter = '';
+let libraryEditTarget = null;
 const draftKey = 'blogplanner-draft';
 let autosaveTimer = null;
 let currentEventId = null; // For editing events
+const sectionTitles = {
+    'dashboard': '📊 Dashboard',
+    'new-post': '➕ New Post',
+    'my-posts': '📋 My Posts',
+    'creator-library': '📚 Creator Directory',
+    'settings': '⚙️ Settings'
+};
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', () => {
@@ -37,12 +46,16 @@ document.addEventListener('DOMContentLoaded', () => {
     setupEventListeners();
     setupAutosaveListeners();
     setupKeyboardShortcuts();
+    setupImageUploadHandlers();
+    startAutoBackup();
     loadDraft();
     updateDashboard();
     updatePostsList();
     displayAuthorBio();
     updateHashtagButtons();
     updateExportPresetDropdown();
+    startSidebarClock();
+    setupNotesList();
     showToast('Blog Planner loaded!', 'success');
     switchSection('dashboard'); // Start on dashboard
 });
@@ -59,6 +72,23 @@ function setupEventListeners() {
             switchSection(section);
         });
     });
+
+    const libraryList = document.getElementById('library-list');
+    if (libraryList) {
+        libraryList.addEventListener('click', (e) => {
+            const action = e.target.dataset.action;
+            if (!action) return;
+            if (action === 'edit') {
+                startLibraryEdit(e.target.dataset.name);
+            } else if (action === 'copy-link') {
+                copyStoreLink(e.target.dataset.link || '');
+            } else if (action === 'save-edit') {
+                saveLibraryEdit(e.target.dataset.name);
+            } else if (action === 'cancel-edit') {
+                cancelLibraryEdit();
+            }
+        });
+    }
 
     // Export Tab Switching
     document.querySelectorAll('.export-tab-btn').forEach(btn => {
@@ -89,6 +119,118 @@ function setupEventListeners() {
 
 }
 
+function startSidebarClock() {
+    const clockEl = document.getElementById('sidebar-datetime');
+    if (!clockEl) return;
+
+    const update = () => {
+        const now = new Date();
+        clockEl.textContent = now.toLocaleString(undefined, {
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    };
+
+    update();
+    setInterval(update, 30000);
+}
+
+// ============================================
+// Image Upload Handlers (click, drag/drop, paste)
+// ============================================
+
+function handleDragOver(e, zoneId) {
+    e.preventDefault();
+    e.stopPropagation();
+    const zone = document.getElementById(zoneId);
+    if (zone) zone.classList.add('drag-over');
+}
+
+function handleDragLeave(e, zoneId) {
+    e.preventDefault();
+    const zone = document.getElementById(zoneId);
+    if (zone && e.target === zone) {
+        zone.classList.remove('drag-over');
+    }
+}
+
+function handleDrop(e, inputId) {
+    e.preventDefault();
+    e.stopPropagation();
+    const zone = document.getElementById(`${inputId === 'blog-image' ? 'image-upload-zone' : 'inspiration-upload-zone'}`);
+    if (zone) zone.classList.remove('drag-over');
+    
+    const files = Array.from(e.dataTransfer?.files || []).filter(f => f.type.startsWith('image/'));
+    if (files.length) {
+        assignFilesToInput(inputId, files);
+    }
+}
+
+function assignFilesToInput(inputId, files) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    const dt = new DataTransfer();
+    files.forEach(f => dt.items.add(f));
+    input.files = dt.files;
+    const event = new Event('change', { bubbles: true });
+    input.dispatchEvent(event);
+}
+
+function setupImageUploadHandlers() {
+    const blogImageInput = document.getElementById('blog-image');
+    const blogUploadZone = document.getElementById('image-upload-zone');
+    const inspirationInput = document.getElementById('inspiration-images');
+    const inspirationZone = document.getElementById('inspiration-upload-zone');
+    const eventImageInput = document.getElementById('deadline-event-image');
+    const eventUploadZone = document.getElementById('event-image-upload-zone');
+    const sponsorImageInput = document.getElementById('deadline-sponsor-image');
+    const sponsorUploadZone = document.getElementById('sponsor-image-upload-zone');
+    const eventDeadlineImageInput = document.getElementById('deadline-event-deadline-image');
+    const eventDeadlineUploadZone = document.getElementById('event-deadline-image-upload-zone');
+
+    if (blogUploadZone && blogImageInput) {
+        blogUploadZone.addEventListener('click', () => blogImageInput.click());
+    }
+    if (inspirationZone && inspirationInput) {
+        inspirationZone.addEventListener('click', () => inspirationInput.click());
+    }
+    if (eventUploadZone && eventImageInput) {
+        eventUploadZone.addEventListener('click', () => eventImageInput.click());
+    }
+    if (sponsorUploadZone && sponsorImageInput) {
+        sponsorUploadZone.addEventListener('click', () => sponsorImageInput.click());
+    }
+    if (eventDeadlineUploadZone && eventDeadlineImageInput) {
+        eventDeadlineUploadZone.addEventListener('click', () => eventDeadlineImageInput.click());
+    }
+
+    // Paste support scoped to upload zones
+    [
+        { input: blogImageInput, zone: blogUploadZone, zoneId: 'image-upload-zone', inputId: 'blog-image' },
+        { input: inspirationInput, zone: inspirationZone, zoneId: 'inspiration-upload-zone', inputId: 'inspiration-images' }
+    ].forEach(({ input, zone, inputId }) => {
+        if (!zone || !input) return;
+        zone.addEventListener('paste', (e) => {
+            const items = e.clipboardData?.items;
+            if (!items) return;
+            const images = [];
+            for (let item of items) {
+                if (item.type.startsWith('image/')) {
+                    const blob = item.getAsFile();
+                    if (blob) images.push(new File([blob], `pasted-image.${blob.type.split('/')[1]}`, { type: blob.type }));
+                }
+            }
+            if (images.length) {
+                e.preventDefault();
+                assignFilesToInput(inputId, images);
+            }
+        });
+    });
+}
+
 function toggleBlueskySettings(button) {
     const card = document.getElementById('bluesky-export-settings');
     if (!card) return;
@@ -117,10 +259,27 @@ function switchSection(sectionId) {
     document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
     
     // Show selected section
-    document.getElementById(sectionId).classList.add('active');
+    const targetSection = document.getElementById(sectionId);
+    if (targetSection) {
+        targetSection.classList.add('active');
+    }
     
     // Mark button as active
-    document.querySelector(`[data-section="${sectionId}"]`).classList.add('active');
+    const activeNav = document.querySelector(`[data-section="${sectionId}"]`);
+    if (activeNav) {
+        activeNav.classList.add('active');
+    }
+
+    // Update top nav title to match section
+    const titleEl = document.getElementById('section-title');
+    if (titleEl) {
+        titleEl.textContent = sectionTitles[sectionId] || 'Blog Planner';
+    }
+    
+    // Initialize settings sections when showing settings page
+    if (sectionId === 'settings') {
+        initializeSettingsSections();
+    }
     
     // Reset wizard to step 1 when returning to new post
     if (sectionId === 'new-post') {
@@ -224,7 +383,7 @@ function switchPlatformTab(platform) {
 // Form Management
 // ============================================
 
-function saveToLibrary(storeName, storeLink) {
+function saveToLibrary(storeName, storeLink, type = 'creator') {
     if (!storeName) return;
     
     // Check if store already exists
@@ -233,7 +392,9 @@ function saveToLibrary(storeName, storeLink) {
     if (!existing) {
         savedLibrary.stores.push({
             name: storeName,
-            link: storeLink || ''
+            link: storeLink || '',
+            type: type,  // 'sponsor' or 'creator'
+            tags: []
         });
         localStorage.setItem('blogplanner-library', JSON.stringify(savedLibrary));
         updateStoreDatalist();
@@ -257,46 +418,277 @@ function updateStoreDatalist() {
     updateLibraryList();
 }
 
-function updateLibraryList() {
-    const list = document.getElementById('library-list');
-    if (!list) return;
+function normalizeLibraryTypes() {
+    if (!savedLibrary || !Array.isArray(savedLibrary.stores)) return;
+    savedLibrary.stores = savedLibrary.stores.map(store => {
+        const normalized = { ...store };
+        if (!normalized.type) normalized.type = 'creator';
+        if (!Array.isArray(normalized.tags)) normalized.tags = [];
+        if ((normalized.name || '').toLowerCase() === 'bad unicorn') {
+            normalized.type = 'sponsor';
+        }
+        return normalized;
+    });
+    localStorage.setItem('blogplanner-library', JSON.stringify(savedLibrary));
+}
 
-    if (!savedLibrary.stores || savedLibrary.stores.length === 0) {
-        list.innerHTML = '<p class="empty-state">No saved sponsors or credits yet. Save a post to populate your library.</p>';
+function setLibraryFilter(term = '') {
+    libraryFilter = term.toLowerCase();
+    updateLibraryList();
+}
+
+function normalizeLibraryType(type) {
+    if (type === 'credit') return 'creator';
+    if (!type) return 'creator';
+    return type;
+}
+
+function addLibraryEntry() {
+    const nameInput = document.getElementById('library-add-name');
+    const linkInput = document.getElementById('library-add-link');
+    const typeSelect = document.getElementById('library-add-type');
+    const tagsInput = document.getElementById('library-add-tags');
+
+    const name = nameInput?.value?.trim();
+    const link = linkInput?.value?.trim() || '';
+    const type = normalizeLibraryType(typeSelect?.value || 'sponsor');
+    const tags = (tagsInput?.value || '')
+        .split(',')
+        .map(t => t.trim())
+        .filter(Boolean);
+
+    if (!name) {
+        showStatus('Please enter a creator/store name.', 'error');
         return;
     }
 
-    const escapeHtml = (str = '') => str
+    const existing = savedLibrary.stores.find(s => (s.name || '').toLowerCase() === name.toLowerCase());
+    if (existing) {
+        existing.type = type || existing.type || 'creator';
+        if (link) existing.link = link;
+        const mergedTags = new Set([...(existing.tags || []), ...tags]);
+        existing.tags = Array.from(mergedTags).filter(Boolean);
+        showStatus('Updated existing creator entry.', 'success');
+    } else {
+        savedLibrary.stores.push({
+            name,
+            link,
+            type,
+            tags
+        });
+        showStatus('Added creator to library.', 'success');
+    }
+
+    localStorage.setItem('blogplanner-library', JSON.stringify(savedLibrary));
+    updateStoreDatalist();
+
+    if (nameInput) nameInput.value = '';
+    if (linkInput) linkInput.value = '';
+    if (typeSelect) typeSelect.value = 'sponsor';
+    if (tagsInput) tagsInput.value = '';
+}
+
+function startLibraryEdit(name) {
+    libraryEditTarget = name;
+    updateLibraryList();
+}
+
+function cancelLibraryEdit() {
+    libraryEditTarget = null;
+    updateLibraryList();
+}
+
+function saveLibraryEdit(name) {
+    const store = savedLibrary.stores.find(s => s.name === name);
+    if (!store) return;
+    const typeInput = document.getElementById(`edit-type-${cssEscapeId(name)}`);
+    const linkInput = document.getElementById(`edit-link-${cssEscapeId(name)}`);
+    const tagsInput = document.getElementById(`edit-tags-${cssEscapeId(name)}`);
+    const newType = typeInput?.value || store.type || 'creator';
+    const newLink = linkInput?.value?.trim() || '';
+    const rawTags = tagsInput?.value || '';
+    const tags = rawTags.split(',').map(t => t.trim()).filter(Boolean);
+    store.type = newType;
+    store.link = newLink;
+    store.tags = tags;
+    libraryEditTarget = null;
+    localStorage.setItem('blogplanner-library', JSON.stringify(savedLibrary));
+    updateStoreDatalist();
+}
+
+function cssEscapeId(str = '') {
+    return str.replace(/[^a-zA-Z0-9_-]/g, '_');
+}
+
+function escapeHtml(str = '') {
+    return String(str)
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
-    const escapeForAttr = (str = '') => str
+}
+
+function escapeForAttr(str = '') {
+    return String(str)
         .replace(/\\/g, '\\\\')
         .replace(/"/g, '\\"');
+}
 
-    list.innerHTML = savedLibrary.stores.map(store => {
-        const displayName = escapeHtml(store.name || 'Untitled');
-        const displayLink = escapeHtml(store.link || '');
-        const nameArg = escapeForAttr(store.name || '');
-        const linkArg = escapeForAttr(store.link || '');
-        const copyNameFn = `copyStoreName(\"${nameArg}\")`;
-        const copyLinkFn = `copyStoreLink(\"${linkArg}\")`;
+function updateLibraryList() {
+    const list = document.getElementById('library-list');
+    if (!list) return;
 
-        return `
-            <div class="library-card">
-                <div class="library-card-title">${displayName}</div>
-                <div class="library-card-link">
-                    ${store.link ? `<a href="${displayLink}" target="_blank" rel="noopener">Open link ↗</a>` : '<span class="muted">No link saved</span>'}
+    if (!savedLibrary.stores || savedLibrary.stores.length === 0) {
+        list.innerHTML = '<p class="empty-state">No saved sponsors or creators yet. Save a post to populate your directory.</p>';
+        return;
+    }
+
+    const term = (libraryFilter || '').trim().toLowerCase();
+    const filtered = savedLibrary.stores.filter(store => {
+        if (!term) return true;
+        const nameMatch = (store.name || '').toLowerCase().includes(term);
+        const tagMatch = Array.isArray(store.tags) && store.tags.some(tag => tag.toLowerCase().includes(term));
+        return nameMatch || tagMatch;
+    });
+
+    // Separate sponsors and credits
+    const sponsors = filtered.filter(s => normalizeLibraryType(s.type) === 'sponsor');
+    const credits = filtered.filter(s => normalizeLibraryType(s.type) !== 'sponsor');  // creators
+
+    const searchInput = document.getElementById('library-search');
+    if (searchInput && searchInput.value !== libraryFilter) {
+        searchInput.value = libraryFilter;
+    }
+
+    let html = '';
+
+    const renderTags = (tags = []) => {
+        if (!tags.length) return '<span class="library-no-link">No tags yet</span>';
+        return `<div class="library-tags">${tags.map(tag => `<span class="library-tag">${escapeHtml(tag)}</span>`).join('')}</div>`;
+    };
+
+    if (sponsors.length > 0) {
+        html += '<div class="library-section"><h4 class="library-section-title">🎁 Sponsors</h4><div class="library-items">';
+        html += sponsors.map(store => {
+            const displayName = escapeHtml(store.name || 'Untitled');
+            const displayLink = escapeHtml(store.link || '');
+            const linkArg = escapeForAttr(store.link || '');
+            const nameArg = escapeForAttr(store.name || '');
+            const isEditing = libraryEditTarget === store.name;
+            const tagsCsv = escapeForAttr((store.tags || []).join(', '));
+            const tagsRow = renderTags(store.tags || []);
+            
+            if (isEditing) {
+                const safeId = cssEscapeId(store.name || '');
+                return `
+                    <div class="library-item library-item-edit">
+                        <div class="library-item-main">
+                            <span class="library-name">${displayName}</span>
+                            <div class="library-actions">
+                                <label class="sr-only" for="edit-type-${safeId}">Store type</label>
+                                <select id="edit-type-${safeId}" class="library-edit-select">
+                                    <option value="sponsor" ${store.type === 'sponsor' ? 'selected' : ''}>Sponsor</option>
+                                    <option value="creator" ${store.type !== 'sponsor' ? 'selected' : ''}>Creator</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="library-edit-tags">
+                            <label class="sr-only" for="edit-link-${safeId}">Store link</label>
+                            <input type="url" id="edit-link-${safeId}" class="library-edit-input" value="${displayLink}" placeholder="https://...">
+                        </div>
+                        <div class="library-edit-tags">
+                            <label class="sr-only" for="edit-tags-${safeId}">Tags</label>
+                            <input type="text" id="edit-tags-${safeId}" class="library-edit-input" value="${tagsCsv}" placeholder="e.g. fashion, hair, decor">
+                        </div>
+                        <div class="library-link-row edit-actions">
+                            <div class="library-actions">
+                                <button type="button" class="library-link-btn" data-action="save-edit" data-name="${nameArg}">Save</button>
+                                <button type="button" class="library-link-btn" data-action="cancel-edit">Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            return `
+                <div class="library-item">
+                    <div class="library-item-main">
+                        <span class="library-name">${displayName}</span>
+                        <div class="library-actions">
+                            <button type="button" class="library-link-btn" data-action="edit" data-name="${nameArg}">Edit</button>
+                            ${store.link ? `<a class="library-open" href="${displayLink}" target="_blank" rel="noopener" title="Open store link">Open ↗</a>
+                            <button type="button" class="library-link-btn" data-action="copy-link" data-link="${linkArg}" title="Copy store link">Copy link</button>` : ''}
+                        </div>
+                    </div>
+                    <div class="library-tag-row">${tagsRow}</div>
                 </div>
-                <div class="library-card-actions">
-                    <button type="button" onclick="${copyNameFn}">Copy name</button>
-                    ${store.link ? `<button type="button" onclick="${copyLinkFn}">Copy link</button>` : ''}
+            `;
+        }).join('');
+        html += '</div></div>';
+    }
+
+    if (credits.length > 0) {
+        html += '<div class="library-section"><h4 class="library-section-title">👤 Creators</h4><div class="library-items">';
+        html += credits.map(store => {
+            const displayName = escapeHtml(store.name || 'Untitled');
+            const displayLink = escapeHtml(store.link || '');
+            const linkArg = escapeForAttr(store.link || '');
+            const nameArg = escapeForAttr(store.name || '');
+            const isEditing = libraryEditTarget === store.name;
+            const tagsCsv = escapeForAttr((store.tags || []).join(', '));
+            const tagsRow = renderTags(store.tags || []);
+            
+            if (isEditing) {
+                const safeId = cssEscapeId(store.name || '');
+                return `
+                    <div class="library-item library-item-edit">
+                        <div class="library-item-main">
+                            <span class="library-name">${displayName}</span>
+                            <div class="library-actions">
+                                <label class="sr-only" for="edit-type-${safeId}">Store type</label>
+                                <select id="edit-type-${safeId}" class="library-edit-select">
+                                    <option value="sponsor" ${store.type === 'sponsor' ? 'selected' : ''}>Sponsor</option>
+                                    <option value="creator" ${store.type !== 'sponsor' ? 'selected' : ''}>Creator</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="library-edit-tags">
+                            <label class="sr-only" for="edit-link-${safeId}">Store link</label>
+                            <input type="url" id="edit-link-${safeId}" class="library-edit-input" value="${displayLink}" placeholder="https://...">
+                        </div>
+                        <div class="library-edit-tags">
+                            <label class="sr-only" for="edit-tags-${safeId}">Tags</label>
+                            <input type="text" id="edit-tags-${safeId}" class="library-edit-input" value="${tagsCsv}" placeholder="e.g. furniture, poses, decor">
+                        </div>
+                        <div class="library-link-row edit-actions">
+                            <div class="library-actions">
+                                <button type="button" class="library-link-btn" data-action="save-edit" data-name="${nameArg}">Save</button>
+                                <button type="button" class="library-link-btn" data-action="cancel-edit">Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            return `
+                <div class="library-item">
+                    <div class="library-item-main">
+                        <span class="library-name">${displayName}</span>
+                        <div class="library-actions">
+                            <button type="button" class="library-link-btn" data-action="edit" data-name="${nameArg}">Edit</button>
+                            ${store.link ? `<a class="library-open" href="${displayLink}" target="_blank" rel="noopener" title="Open store link">Open ↗</a>
+                            <button type="button" class="library-link-btn" data-action="copy-link" data-link="${linkArg}" title="Copy store link">Copy link</button>` : ''}
+                        </div>
+                    </div>
+                    <div class="library-tag-row">${tagsRow}</div>
                 </div>
-            </div>
-        `;
-    }).join('');
+            `;
+        }).join('');
+        html += '</div></div>';
+    }
+
+    list.innerHTML = html;
 }
 
 function copyStoreName(name) {
@@ -308,6 +700,12 @@ function copyStoreName(name) {
 function copyStoreLink(link) {
     navigator.clipboard.writeText(link).then(() => {
         showStatus('🔗 Link copied');
+    });
+}
+
+function attachStoreAutofill(input) {
+    ['change', 'input', 'blur'].forEach(evt => {
+        input.addEventListener(evt, () => autofillStore(input));
     });
 }
 
@@ -337,15 +735,17 @@ function toggleAvatarDetails(nameInput) {
     const card = nameInput.closest('.avatar-card');
     const partsTable = card.querySelector('.avatar-parts-table');
     const cosmeticsSection = card.querySelector('.avatar-cosmetics-section');
-    
-    if (nameInput.value.trim() === '') {
-        // Collapse
-        partsTable.classList.add('collapsed-section');
-        if (cosmeticsSection) cosmeticsSection.style.display = 'none';
-    } else {
-        // Expand
+
+    const hasName = nameInput.value.trim() !== '';
+
+    if (hasName) {
+        // Expand when a name is present
         partsTable.classList.remove('collapsed-section');
         if (cosmeticsSection) cosmeticsSection.style.display = 'flex';
+    } else {
+        // Collapse when empty to save space
+        partsTable.classList.add('collapsed-section');
+        if (cosmeticsSection) cosmeticsSection.style.display = 'none';
     }
 }
 
@@ -370,7 +770,7 @@ function addSponsor() {
     
     // Add event listener for store autocomplete
     const storeInput = item.querySelector('.sponsor-store');
-    storeInput.addEventListener('change', () => autofillStore(storeInput));
+    attachStoreAutofill(storeInput);
     
     sponsorsList.appendChild(item);
 }
@@ -396,7 +796,7 @@ function addCredit() {
     
     // Add event listener for store autocomplete
     const storeInput = item.querySelector('.credit-store');
-    storeInput.addEventListener('change', () => autofillStore(storeInput));
+    attachStoreAutofill(storeInput);
     
     creditsList.appendChild(item);
 }
@@ -425,61 +825,61 @@ function addAvatar() {
             <div class="avatar-part-row">
                 <div class="col-part"><span class="part-label">Mod/Skin</span></div>
                 <input type="text" name="avatar-mod-creator" aria-label="Mod/Skin creator" placeholder="Creator" class="col-creator">
-                <input type="text" name="avatar-mod-link" aria-label="Mod/Skin store link" placeholder="Store link" class="col-link">
+                <input type="text" name="avatar-mod-link" aria-label="Mod/Skin store link" placeholder="Store Link" class="col-link">
             </div>
             
             <div class="avatar-part-row">
                 <div class="col-part"><span class="part-label">Body</span></div>
                 <input type="text" name="avatar-body-creator" aria-label="Body creator" placeholder="Creator" class="col-creator">
-                <input type="text" name="avatar-body-link" aria-label="Body store link" placeholder="Store link" class="col-link">
+                <input type="text" name="avatar-body-link" aria-label="Body store link" placeholder="Store Link" class="col-link">
             </div>
             
             <div class="avatar-part-row">
                 <div class="col-part"><span class="part-label">Head</span></div>
                 <input type="text" name="avatar-head-creator" aria-label="Head creator" placeholder="Creator" class="col-creator">
-                <input type="text" name="avatar-head-link" aria-label="Head store link" placeholder="Store link" class="col-link">
+                <input type="text" name="avatar-head-link" aria-label="Head store link" placeholder="Store Link" class="col-link">
             </div>
             
             <div class="avatar-part-row">
                 <div class="col-part"><span class="part-label">Hands</span></div>
                 <input type="text" name="avatar-hands-creator" aria-label="Hands creator" placeholder="Creator" class="col-creator">
-                <input type="text" name="avatar-hands-link" aria-label="Hands store link" placeholder="Store link" class="col-link">
+                <input type="text" name="avatar-hands-link" aria-label="Hands store link" placeholder="Store Link" class="col-link">
             </div>
             
             <div class="avatar-part-row">
                 <div class="col-part"><span class="part-label">Feet</span></div>
                 <input type="text" name="avatar-feet-creator" aria-label="Feet creator" placeholder="Creator" class="col-creator">
-                <input type="text" name="avatar-feet-link" aria-label="Feet store link" placeholder="Store link" class="col-link">
+                <input type="text" name="avatar-feet-link" aria-label="Feet store link" placeholder="Store Link" class="col-link">
             </div>
             
             <div class="avatar-part-row">
                 <div class="col-part"><span class="part-label">Tail</span></div>
                 <input type="text" name="avatar-tail-creator" aria-label="Tail creator" placeholder="Creator" class="col-creator">
-                <input type="text" name="avatar-tail-link" aria-label="Tail store link" placeholder="Store link" class="col-link">
+                <input type="text" name="avatar-tail-link" aria-label="Tail store link" placeholder="Store Link" class="col-link">
             </div>
             
             <div class="avatar-part-row">
                 <div class="col-part"><span class="part-label">Ears</span></div>
                 <input type="text" name="avatar-ears-creator" aria-label="Ears creator" placeholder="Creator" class="col-creator">
-                <input type="text" name="avatar-ears-link" aria-label="Ears store link" placeholder="Store link" class="col-link">
+                <input type="text" name="avatar-ears-link" aria-label="Ears store link" placeholder="Store Link" class="col-link">
             </div>
             
             <div class="avatar-part-row">
                 <div class="col-part"><span class="part-label">Eyes</span></div>
                 <input type="text" name="avatar-eyes-creator" aria-label="Eyes creator" placeholder="Creator" class="col-creator">
-                <input type="text" name="avatar-eyes-link" aria-label="Eyes store link" placeholder="Store link" class="col-link">
+                <input type="text" name="avatar-eyes-link" aria-label="Eyes store link" placeholder="Store Link" class="col-link">
             </div>
             
             <div class="avatar-part-row">
                 <div class="col-part"><span class="part-label">Hair</span></div>
                 <input type="text" name="avatar-hair-creator" aria-label="Hair creator" placeholder="Creator" class="col-creator">
-                <input type="text" name="avatar-hair-link" aria-label="Hair store link" placeholder="Store link" class="col-link">
+                <input type="text" name="avatar-hair-link" aria-label="Hair store link" placeholder="Store Link" class="col-link">
             </div>
             
             <div class="avatar-part-row">
                 <div class="col-part"><span class="part-label">Nails/Claws</span></div>
                 <input type="text" name="avatar-nails-creator" aria-label="Nails/Claws creator" placeholder="Creator" class="col-creator">
-                <input type="text" name="avatar-nails-link" aria-label="Nails/Claws store link" placeholder="Store link" class="col-link">
+                <input type="text" name="avatar-nails-link" aria-label="Nails/Claws store link" placeholder="Store Link" class="col-link">
             </div>
         </div>
         
@@ -498,13 +898,18 @@ function removeAvatar(btn) {
 function restoreDraft(draft) {
     if (!draft) return;
 
-    document.getElementById('post-title').value = draft.title || '';
-    document.getElementById('post-scene').value = draft.scene || '';
-    document.getElementById('post-concept').value = draft.concept || '';
-    document.getElementById('post-tags').value = (draft.tags || []).join(', ');
-    document.getElementById('post-caption').value = draft.caption || '';
-    document.getElementById('bluesky-link').value = draft.blueskyLink || '';
-    document.getElementById('sponsor-mentions').value = draft.sponsorMentions || '';
+    const setElementValue = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.value = value || '';
+    };
+
+    setElementValue('post-title', draft.title);
+    setElementValue('post-scene', draft.scene);
+    setElementValue('post-concept', draft.concept);
+    setElementValue('post-tags', (draft.tags || []).join(', '));
+    setElementValue('post-caption', draft.caption);
+    setElementValue('bluesky-link', draft.blueskyLink);
+    setElementValue('sponsor-mentions', draft.sponsorMentions);
 
     inspirationImages = draft.inspirationImages || [];
     const gallery = document.getElementById('inspiration-gallery');
@@ -646,7 +1051,7 @@ function restoreDraft(draft) {
                 </div>
             </div>
             
-            <div class="avatar-cosmetics-section">
+            <div class="avatar-cosmetics-section" style="display: none;">
                 <label for="avatar-cosmetics">Additional Cosmetics</label>
                 <textarea name="avatar-cosmetics" aria-label="Cosmetics" placeholder="List any additional items (jewelry, tattoos, etc.) - one per line" class="avatar-cosmetics" rows="2">${(a.cosmetics || []).join('\n')}</textarea>
             </div>
@@ -695,9 +1100,28 @@ function formatCaption(format) {
 }
 
 function insertHashtag(tag) {
-    const textarea = document.getElementById('post-caption');
-    const start = textarea.selectionStart;
-    const text = textarea.value;
+    const tagsInput = document.getElementById('post-tags');
+    const caption = document.getElementById('post-caption');
+    const active = document.activeElement;
+
+    // If tags input exists and the caption isn't focused, append to tags as comma-separated values
+    if (tagsInput && active !== caption) {
+        const current = tagsInput.value
+            .split(',')
+            .map(t => t.trim())
+            .filter(Boolean);
+        if (!current.includes(tag)) {
+            current.push(tag);
+            tagsInput.value = current.join(', ');
+        }
+        scheduleDraftSave();
+        return;
+    }
+
+    if (!caption) return;
+
+    const start = caption.selectionStart;
+    const text = caption.value;
     const before = text.substring(0, start);
     const after = text.substring(start);
     
@@ -705,9 +1129,9 @@ function insertHashtag(tag) {
     const prefix = (before.length > 0 && !before.endsWith(' ') && !before.endsWith('\n')) ? ' ' : '';
     const suffix = ' ';
     
-    textarea.value = before + prefix + tag + suffix + after;
-    textarea.selectionStart = textarea.selectionEnd = start + prefix.length + tag.length + suffix.length;
-    textarea.focus();
+    caption.value = before + prefix + tag + suffix + after;
+    caption.selectionStart = caption.selectionEnd = start + prefix.length + tag.length + suffix.length;
+    caption.focus();
     scheduleDraftSave();
 }
 
@@ -744,7 +1168,7 @@ function getFormData() {
         
         if (store && itemName) {
             // Save to library
-            saveToLibrary(store, storeLink);
+            saveToLibrary(store, storeLink, 'sponsor');
             return { store, itemName, storeLink, event, eventLink };
         }
         return null;
@@ -801,7 +1225,7 @@ function getFormData() {
         id: Date.now(),
         title: document.getElementById('post-title').value,
         scene: document.getElementById('post-scene').value,
-        concept: document.getElementById('post-concept').value,
+        notes: currentPost?.notes || [],
         tags: document.getElementById('post-tags').value.split(',').map(t => t.trim()).filter(t => t),
         inspirationImages: inspirationImages,
         image: document.getElementById('blog-image').value,
@@ -890,13 +1314,17 @@ function clearForm() {
     document.getElementById('post-title').value = '';
     document.getElementById('post-avatar').value = '';
     document.getElementById('post-scene').value = '';
-    document.getElementById('post-concept').value = '';
+    document.getElementById('notes-input').value = '';
     document.getElementById('post-tags').value = '';
     document.getElementById('blog-image').value = '';
     document.getElementById('inspiration-images').value = '';
     document.getElementById('post-caption').value = '';
     document.getElementById('bluesky-link').value = '';
     inspirationImages = [];
+    currentPost = { notes: [] };
+    
+    // Reset notes
+    renderNotesList();
     
     // Reset sponsors
     document.getElementById('sponsors-list').innerHTML = `
@@ -913,9 +1341,9 @@ function clearForm() {
     // Reset credits
     document.getElementById('credits-list').innerHTML = `
         <div class="credit-row">
-            <input type="text" name="credit-store" aria-label="Credit store" placeholder="Creator/Store" class="credit-store" list="saved-stores">
-            <input type="text" name="credit-item" aria-label="Credit item" placeholder="Item Name" class="credit-item-name">
-            <input type="url" name="credit-link" aria-label="Credit store link" placeholder="Store Link (SL/MP)" class="credit-link" title="In-world landmark or Marketplace URL">
+            <input type="text" name="credit-store" aria-label="Credit store" placeholder="Creator/store" class="credit-store" list="saved-stores">
+            <input type="text" name="credit-item" aria-label="Credit item" placeholder="Item name" class="credit-item-name">
+            <input type="url" name="credit-link" aria-label="Credit store link" placeholder="Store link (SL/MP)" class="credit-link" title="In-world landmark or Marketplace URL">
             <input type="text" name="credit-event" aria-label="Credit event" placeholder="Event Name" class="credit-event">
             <input type="url" name="credit-event-link" aria-label="Credit event landmark" placeholder="Event Landmark" class="credit-event-link" title="Event in-world landmark">
             <button type="button" class="btn-remove" onclick="removeCredit(this)">✕</button>
@@ -1005,28 +1433,81 @@ document.addEventListener('DOMContentLoaded', () => {
     const inspirationInput = document.getElementById('inspiration-images');
     if (inspirationInput) {
         inspirationInput.addEventListener('change', (e) => {
-            const files = e.target.files;
-            inspirationImages = [];
-            const gallery = document.getElementById('inspiration-gallery');
-            gallery.innerHTML = '';
-            
-            Array.from(files).forEach((file, index) => {
+            const files = Array.from(e.target.files || []).filter(f => f.type.startsWith('image/'));
+            renderInspirationFiles(files);
+        });
+    }
+
+    // Event image handler (in deadline modal)
+    const eventImageInput = document.getElementById('deadline-event-image');
+    if (eventImageInput) {
+        eventImageInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file && file.type.startsWith('image/')) {
                 const reader = new FileReader();
                 reader.onload = (event) => {
-                    inspirationImages.push(event.target.result);
-                    const item = document.createElement('div');
-                    item.className = 'inspiration-item';
-                    item.innerHTML = `
-                        <img src="${event.target.result}" alt="Inspiration ${index + 1}">
-                        <button type="button" class="remove-inspiration" onclick="removeInspirationImage(${index})">✕</button>
-                    `;
-                    gallery.appendChild(item);
+                    const preview = document.getElementById('event-image-preview');
+                    preview.innerHTML = `<img src="${event.target.result}" alt="Event image">`;
                 };
                 reader.readAsDataURL(file);
-            });
+            }
+        });
+    }
+
+    // Sponsor product image handler
+    const sponsorImageInput = document.getElementById('deadline-sponsor-image');
+    if (sponsorImageInput) {
+        sponsorImageInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file && file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const preview = document.getElementById('sponsor-image-preview');
+                    preview.innerHTML = `<img src="${event.target.result}" alt="Sponsor product">`;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+
+    // Event deadline product image handler
+    const eventDeadlineImageInput = document.getElementById('deadline-event-deadline-image');
+    if (eventDeadlineImageInput) {
+        eventDeadlineImageInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file && file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const preview = document.getElementById('event-deadline-image-preview');
+                    preview.innerHTML = `<img src="${event.target.result}" alt="Event deadline product">`;
+                };
+                reader.readAsDataURL(file);
+            }
         });
     }
 });
+
+function renderInspirationFiles(files) {
+    if (!files || !files.length) return;
+    inspirationImages = [];
+    const gallery = document.getElementById('inspiration-gallery');
+    gallery.innerHTML = '';
+
+    files.forEach((file, index) => {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            inspirationImages.push(event.target.result);
+            const item = document.createElement('div');
+            item.className = 'inspiration-item';
+            item.innerHTML = `
+                <img src="${event.target.result}" alt="Inspiration ${index + 1}">
+                <button type="button" class="remove-inspiration" onclick="removeInspirationImage(${index})">✕</button>
+            `;
+            gallery.appendChild(item);
+        };
+        reader.readAsDataURL(file);
+    });
+}
 
 function removeInspirationImage(index) {
     inspirationImages.splice(index, 1);
@@ -1290,6 +1771,26 @@ function copyExport() {
     const text = document.getElementById('export-text').value;
     navigator.clipboard.writeText(text).then(() => {
         showStatus('📋 Copied to clipboard!');
+    });
+}
+
+function copyTagsForFlickrTumblr() {
+    if (!currentPost) {
+        showToast('No post loaded', 'warning');
+        return;
+    }
+    
+    const tags = (currentPost.tags || []);
+    if (tags.length === 0) {
+        showToast('No tags to copy', 'warning');
+        return;
+    }
+    
+    const tagsString = tags.join(', ');
+    navigator.clipboard.writeText(tagsString).then(() => {
+        showToast(`Copied ${tags.length} tags for Flickr/Tumblr!`, 'success');
+    }).catch(() => {
+        showToast('Failed to copy tags', 'error');
     });
 }
 
@@ -1642,67 +2143,156 @@ function editPost(id) {
     const post = posts.find(p => p.id === id);
     if (!post) return;
     
-    // Load post data into form
-    document.getElementById('post-title').value = post.title;
-    document.getElementById('post-avatar').value = post.avatar;
-    document.getElementById('post-scene').value = post.scene;
-    document.getElementById('post-concept').value = post.concept;
-    document.getElementById('post-tags').value = (post.tags || []).join(', ');
-    document.getElementById('post-caption').value = post.caption;
-    document.getElementById('bluesky-link').value = post.blueskyLink || '';
-    document.getElementById('sponsor-mentions').value = post.sponsorMentions || '';
+    currentPost = { notes: post.notes || [] };
+    currentEditingPostId = id;
     
-    if (post.imageData) {
-        document.getElementById('image-preview').innerHTML = `<img src="${post.imageData}" alt="Blog image">`;
-    }
-
-    // Load hosted image URL if available
-    if (post.hostedImageUrl) {
-        document.getElementById('hosted-image-url').value = post.hostedImageUrl;
-        document.getElementById('image-url-container').classList.remove('hidden');
-    }
-
-    // Load inspiration images
-    if (post.inspirationImages && post.inspirationImages.length > 0) {
-        inspirationImages = post.inspirationImages;
-        document.getElementById('inspiration-gallery').innerHTML = post.inspirationImages.map((img, i) => `
-            <div class="inspiration-item">
-                <img src="${img}" alt="Inspiration ${i + 1}">
-                <button type="button" class="remove-inspiration" onclick="removeInspirationImage(${i})">✕</button>
-            </div>
-        `).join('');
-    }
-    
-    // Sponsors
-    const sponsorsList = document.getElementById('sponsors-list');
-    sponsorsList.innerHTML = post.sponsors.map(s => `
-        <div class="sponsor-row">
-            <input type="text" name="sponsor-store" aria-label="Sponsor store" placeholder="Creator/Store" class="sponsor-store" list="saved-stores" value="${s.store}">
-            <input type="text" name="sponsor-item" aria-label="Sponsor item" placeholder="Item Name" class="sponsor-item" value="${s.itemName}">
-            <input type="url" name="sponsor-link" aria-label="Sponsor store link" placeholder="Store Link (SL/MP)" class="sponsor-link" value="${s.storeLink || ''}" title="In-world landmark or Marketplace URL">
-            <input type="text" name="sponsor-event" aria-label="Sponsor event" placeholder="Event Name" class="sponsor-event" value="${s.event || ''}">
-            <input type="url" name="sponsor-event-link" aria-label="Sponsor event landmark" placeholder="Event Landmark" class="sponsor-event-link" value="${s.eventLink || ''}" title="Event in-world landmark">
-            <button type="button" class="btn-remove" onclick="removeCredit(this)">✕</button>
-        </div>
-    `).join('');
-    
-    // Credits
-    const creditsList = document.getElementById('credits-list');
-    creditsList.innerHTML = post.credits.map(c => `
-        <div class="credit-row">
-            <input type="text" name="credit-store" aria-label="Credit store" placeholder="Creator/Store" class="credit-store" list="saved-stores" value="${c.store}">
-            <input type="text" name="credit-item" aria-label="Credit item" placeholder="Item Name" class="credit-item-name" value="${c.itemName}">
-            <input type="url" name="credit-link" aria-label="Credit store link" placeholder="Store Link (SL/MP)" class="credit-link" value="${c.storeLink || ''}" title="In-world landmark or Marketplace URL">
-            <input type="text" name="credit-event" aria-label="Credit event" placeholder="Event Name" class="credit-event" value="${c.event || ''}">
-            <input type="url" name="credit-event-link" aria-label="Credit event landmark" placeholder="Event Landmark" class="credit-event-link" value="${c.eventLink || ''}" title="Event in-world landmark">
-            <button type="button" class="btn-remove" onclick="removeCredit(this)">✕</button>
-        </div>
-    `).join('');
-    
-    // Remove old post and switch to editor
-    posts = posts.filter(p => p.id !== id);
+    // Switch to new-post section first
     switchSection('new-post');
-    showStatus('📝 Post loaded for editing');
+    goToStep(1);
+    
+    // Use setTimeout to ensure DOM is ready
+    setTimeout(() => {
+        const safeSet = (id, value) => {
+            const el = document.getElementById(id);
+            if (el) el.value = value;
+        };
+        
+        // Load post data into form
+        safeSet('post-title', post.title || '');
+        safeSet('post-scene', post.scene || '');
+        safeSet('post-tags', (post.tags || []).join(', '));
+        safeSet('post-caption', post.caption || '');
+        safeSet('bluesky-link', post.blueskyLink || '');
+        safeSet('sponsor-mentions', post.sponsorMentions || '');
+        
+        if (post.imageData) {
+            const preview = document.getElementById('image-preview');
+            if (preview) preview.innerHTML = `<img src="${post.imageData}" alt="Blog image">`;
+        }
+
+        // Load hosted image URL if available
+        if (post.hostedImageUrl) {
+            const urlEl = document.getElementById('hosted-image-url');
+            const containerEl = document.getElementById('image-url-container');
+            if (urlEl) urlEl.value = post.hostedImageUrl;
+            if (containerEl) containerEl.classList.remove('hidden');
+        }
+
+        // Load inspiration images
+        if (post.inspirationImages && post.inspirationImages.length > 0) {
+            inspirationImages = post.inspirationImages;
+            const gallery = document.getElementById('inspiration-gallery');
+            if (gallery) {
+                gallery.innerHTML = post.inspirationImages.map((img, i) => `
+                    <div class="inspiration-item">
+                        <img src="${img}" alt="Inspiration ${i + 1}">
+                        <button type="button" class="remove-inspiration" onclick="removeInspirationImage(${i})">✕</button>
+                    </div>
+                `).join('');
+            }
+        }
+        
+        // Render notes
+        renderNotesList();
+        
+        // Sponsors
+        const sponsorsList = document.getElementById('sponsors-list');
+        if (sponsorsList && post.sponsors && post.sponsors.length > 0) {
+            sponsorsList.innerHTML = post.sponsors.map(s => `
+                <div class="sponsor-row">
+                    <input type="text" name="sponsor-store" aria-label="Sponsor store" placeholder="Creator/store" class="sponsor-store" list="saved-stores" value="${s.store || ''}">
+                    <input type="text" name="sponsor-item" aria-label="Sponsor item" placeholder="Item name" class="sponsor-item" value="${s.itemName || ''}">
+                    <input type="url" name="sponsor-link" aria-label="Sponsor store link" placeholder="Store link (SL/MP)" class="sponsor-link" value="${s.storeLink || ''}" title="In-world landmark or Marketplace URL">
+                    <input type="text" name="sponsor-event" aria-label="Sponsor event" placeholder="Event name" class="sponsor-event" value="${s.event || ''}">
+                    <input type="url" name="sponsor-event-link" aria-label="Sponsor event landmark" placeholder="Event landmark" class="sponsor-event-link" value="${s.eventLink || ''}" title="Event in-world landmark">
+                    <button type="button" class="btn-remove" onclick="removeCredit(this)">✕</button>
+                </div>
+            `).join('');
+        }
+        
+        // Credits
+        const creditsList = document.getElementById('credits-list');
+        if (creditsList && post.credits && post.credits.length > 0) {
+            creditsList.innerHTML = post.credits.map(c => `
+                <div class="credit-row">
+                    <input type="text" name="credit-store" aria-label="Credit store" placeholder="Creator/store" class="credit-store" list="saved-stores" value="${c.store || ''}">
+                    <input type="text" name="credit-item" aria-label="Credit item" placeholder="Item name" class="credit-item-name" value="${c.itemName || ''}">
+                    <input type="url" name="credit-link" aria-label="Credit store link" placeholder="Store link (SL/MP)" class="credit-link" value="${c.storeLink || ''}" title="In-world landmark or Marketplace URL">
+                    <input type="text" name="credit-event" aria-label="Credit event" placeholder="Event name" class="credit-event" value="${c.event || ''}">
+                    <input type="url" name="credit-event-link" aria-label="Credit event landmark" placeholder="Event landmark" class="credit-event-link" value="${c.eventLink || ''}" title="Event in-world landmark">
+                    <button type="button" class="btn-remove" onclick="removeCredit(this)">✕</button>
+                </div>
+            `).join('');
+        }
+        
+        // Avatars
+        const avatarsList = document.getElementById('avatars-list');
+        if (avatarsList && post.avatars && post.avatars.length > 0) {
+            avatarsList.innerHTML = post.avatars.map(a => `
+                <div class="avatar-card">
+                    <div class="avatar-card-header">
+                        <input type="text" name="avatar-name" aria-label="Avatar name" placeholder="Avatar Name or Nickname" class="avatar-name" value="${a.name || ''}" oninput="toggleAvatarDetails(this)">
+                        <button type="button" class="btn-remove" onclick="removeAvatar(this)">✕</button>
+                    </div>
+                    <div class="avatar-parts-table">
+                        <div class="avatar-parts-header">
+                            <div class="col-part">Part</div>
+                            <div class="col-creator">Creator</div>
+                            <div class="col-link">Link</div>
+                        </div>
+                        <div class="avatar-part" data-part="Mod"><div>Mod</div>
+                            <input type="text" name="avatar-mod-creator" list="saved-stores" value="${a.modCreator || ''}">
+                            <input type="url" name="avatar-mod-link" placeholder="Link" value="${a.modLink || ''}">
+                        </div>
+                        <div class="avatar-part" data-part="Body"><div>Body</div>
+                            <input type="text" name="avatar-body-creator" list="saved-stores" value="${a.bodyCreator || ''}">
+                            <input type="url" name="avatar-body-link" placeholder="Link" value="${a.bodyLink || ''}">
+                        </div>
+                        <div class="avatar-part" data-part="Head"><div>Head</div>
+                            <input type="text" name="avatar-head-creator" list="saved-stores" value="${a.headCreator || ''}">
+                            <input type="url" name="avatar-head-link" placeholder="Link" value="${a.headLink || ''}">
+                        </div>
+                        <div class="avatar-part" data-part="Hands"><div>Hands</div>
+                            <input type="text" name="avatar-hands-creator" list="saved-stores" value="${a.handsCreator || ''}">
+                            <input type="url" name="avatar-hands-link" placeholder="Link" value="${a.handsLink || ''}">
+                        </div>
+                        <div class="avatar-part" data-part="Feet"><div>Feet</div>
+                            <input type="text" name="avatar-feet-creator" list="saved-stores" value="${a.feetCreator || ''}">
+                            <input type="url" name="avatar-feet-link" placeholder="Link" value="${a.feetLink || ''}">
+                        </div>
+                        <div class="avatar-part" data-part="Tail"><div>Tail</div>
+                            <input type="text" name="avatar-tail-creator" list="saved-stores" value="${a.tailCreator || ''}">
+                            <input type="url" name="avatar-tail-link" placeholder="Link" value="${a.tailLink || ''}">
+                        </div>
+                        <div class="avatar-part" data-part="Ears"><div>Ears</div>
+                            <input type="text" name="avatar-ears-creator" list="saved-stores" value="${a.earsCreator || ''}">
+                            <input type="url" name="avatar-ears-link" placeholder="Link" value="${a.earsLink || ''}">
+                        </div>
+                        <div class="avatar-part" data-part="Eyes"><div>Eyes</div>
+                            <input type="text" name="avatar-eyes-creator" list="saved-stores" value="${a.eyesCreator || ''}">
+                            <input type="url" name="avatar-eyes-link" placeholder="Link" value="${a.eyesLink || ''}">
+                        </div>
+                        <div class="avatar-part" data-part="Hair"><div>Hair</div>
+                            <input type="text" name="avatar-hair-creator" list="saved-stores" value="${a.hairCreator || ''}">
+                            <input type="url" name="avatar-hair-link" placeholder="Link" value="${a.hairLink || ''}">
+                        </div>
+                        <div class="avatar-part" data-part="Nails"><div>Nails</div>
+                            <input type="text" name="avatar-nails-creator" list="saved-stores" value="${a.nailsCreator || ''}">
+                            <input type="url" name="avatar-nails-link" placeholder="Link" value="${a.nailsLink || ''}">
+                        </div>
+                    </div>
+                    <div>
+                        <label>Cosmetics/Other</label>
+                        <textarea name="avatar-cosmetics" placeholder="One per line">${(a.cosmetics || []).join('\n')}</textarea>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // Remove old post from array
+        posts = posts.filter(p => p.id !== id);
+        showStatus('📝 Post loaded for editing');
+    }, 50);
 }
 
 function deletePost(id) {
@@ -1720,7 +2310,7 @@ function deletePost(id) {
         posts = previousPosts;
         saveData();
         updatePostsList();
-        showStatus('↩️ Deletion undone');
+        showStatus('✅ Post restored');
     });
 }
 
@@ -1799,6 +2389,22 @@ function updateApiKeyStatus() {
         imgbbStatus.textContent = '✗ Not Set';
         imgbbStatus.className = 'api-status empty';
     }
+}
+
+// Toggle Settings Sections (collapse/expand)
+function toggleSettingsSection(headerElement) {
+    const fieldset = headerElement.closest('fieldset');
+    if (!fieldset) return;
+    
+    fieldset.classList.toggle('collapsed');
+}
+
+// Initialize Settings Sections (collapse by default, except Data Management)
+function initializeSettingsSections() {
+    const settingsSections = document.querySelectorAll('.settings-section-collapsible');
+    settingsSections.forEach(section => {
+        section.classList.add('collapsed');
+    });
 }
 
 function exportAllData() {
@@ -1979,6 +2585,7 @@ function loadDataInit() {
     if (savedLib) {
         savedLibrary = JSON.parse(savedLib);
         console.log('Loaded library:', savedLibrary.stores.length, 'stores');
+        normalizeLibraryTypes();
     }
     
     // Update API status indicators
@@ -1987,7 +2594,7 @@ function loadDataInit() {
     
     // Add autocomplete event listeners to initial rows
     document.querySelectorAll('.sponsor-store, .credit-store').forEach(input => {
-        input.addEventListener('change', () => autofillStore(input));
+        attachStoreAutofill(input);
     });
 }
 
@@ -2098,29 +2705,138 @@ function updateRecentPosts() {
 // Events & Deadlines Functions
 // ============================================
 
+function updateDeadlineForm() {
+    const type = document.getElementById('deadline-type').value;
+    
+    // Hide all groups first
+    document.getElementById('deadline-sponsor-group').classList.add('deadline-event-group-hidden');
+    document.getElementById('deadline-sponsor-image-group').classList.add('deadline-event-group-hidden');
+    document.getElementById('deadline-event-deadline-group').classList.add('deadline-event-deadline-group-hidden');
+    document.getElementById('deadline-event-deadline-image-group').classList.add('deadline-event-deadline-group-hidden');
+    document.getElementById('deadline-event-info-group').classList.add('deadline-event-info-group-hidden');
+    document.getElementById('deadline-event-theme-group').classList.add('deadline-event-info-group-hidden');
+    document.getElementById('deadline-event-image-group').classList.add('deadline-event-info-group-hidden');
+    document.getElementById('deadline-date-group').classList.remove('deadline-event-group-hidden');
+    document.getElementById('deadline-post-group').classList.remove('deadline-event-group-hidden');
+    
+    // Show relevant groups based on type
+    if (type === 'sponsor') {
+        document.getElementById('deadline-sponsor-group').classList.remove('deadline-event-group-hidden');
+        document.getElementById('deadline-sponsor-image-group').classList.remove('deadline-event-group-hidden');
+        document.getElementById('deadline-date-group').classList.remove('deadline-event-group-hidden');
+    } else if (type === 'event-deadline') {
+        document.getElementById('deadline-event-deadline-group').classList.remove('deadline-event-deadline-group-hidden');
+        document.getElementById('deadline-event-deadline-image-group').classList.remove('deadline-event-deadline-group-hidden');
+        document.getElementById('deadline-date-group').classList.remove('deadline-event-group-hidden');
+    } else if (type === 'event') {
+        // Scheduled Event type doesn't have due date or post link (it's logging an event)
+        document.getElementById('deadline-event-info-group').classList.remove('deadline-event-info-group-hidden');
+        document.getElementById('deadline-event-theme-group').classList.remove('deadline-event-info-group-hidden');
+        document.getElementById('deadline-event-image-group').classList.remove('deadline-event-info-group-hidden');
+        document.getElementById('deadline-date-group').classList.add('deadline-event-group-hidden');
+        document.getElementById('deadline-post-group').classList.add('deadline-event-group-hidden');
+    }
+}
+
 function openEventModal(eventId = null) {
     currentEventId = eventId;
     const modal = document.getElementById('event-modal');
     const title = document.getElementById('event-modal-title');
     
+    // Reset form
+    document.getElementById('deadline-type').value = 'sponsor';
+    document.getElementById('deadline-name').value = '';
+    document.getElementById('deadline-sponsor').value = '';
+    document.getElementById('deadline-event-name').value = '';
+    document.getElementById('deadline-date').value = '';
+    document.getElementById('deadline-event-date').value = '';
+    document.getElementById('deadline-event-theme').value = '';
+    document.getElementById('deadline-priority').value = 'medium';
+    document.getElementById('deadline-notes').value = '';
+    document.getElementById('deadline-post-id').value = '';
+    document.getElementById('event-image-preview').innerHTML = '';
+    document.getElementById('sponsor-image-preview').innerHTML = '';
+    document.getElementById('event-deadline-image-preview').innerHTML = '';
+    
+    updateDeadlineForm();
+    updatePostSelect();
+    
     if (eventId) {
         const event = events.find(e => e.id === eventId);
         if (event) {
             title.textContent = 'Edit Event';
-            document.getElementById('event-name').value = event.name;
-            document.getElementById('event-date').value = event.date;
-            document.getElementById('event-type').value = event.type;
-            document.getElementById('event-notes').value = event.notes || '';
+            document.getElementById('deadline-type').value = event.type || 'sponsor';
+            document.getElementById('deadline-name').value = event.name;
+            document.getElementById('deadline-sponsor').value = event.sponsor || '';
+            document.getElementById('deadline-event-name').value = event.eventName || '';
+            document.getElementById('deadline-date').value = event.date || '';
+            document.getElementById('deadline-event-date').value = event.eventDate || '';
+            document.getElementById('deadline-event-theme').value = event.theme || '';
+            document.getElementById('deadline-priority').value = event.priority || 'medium';
+            document.getElementById('deadline-notes').value = event.notes || '';
+            document.getElementById('deadline-post-id').value = event.postId || '';
+            
+            if (event.eventImage) {
+                document.getElementById('event-image-preview').innerHTML = `<img src="${event.eventImage}" alt="Event thumbnail">`;
+            }
+            if (event.sponsorImage) {
+                document.getElementById('sponsor-image-preview').innerHTML = `<img src="${event.sponsorImage}" alt="Sponsor product">`;
+            }
+            if (event.eventDeadlineImage) {
+                document.getElementById('event-deadline-image-preview').innerHTML = `<img src="${event.eventDeadlineImage}" alt="Event deadline product">`;
+            }
+            updateDeadlineForm();
         }
     } else {
-        title.textContent = 'Add Event';
-        document.getElementById('event-name').value = '';
-        document.getElementById('event-date').value = '';
-        document.getElementById('event-type').value = 'deadline';
-        document.getElementById('event-notes').value = '';
+        title.textContent = 'Add Event/Deadline';
     }
     
     modal.classList.add('active');
+}
+
+
+
+function updatePostSelect() {
+    const select = document.getElementById('deadline-post-id');
+    select.innerHTML = '<option value=\"\">None - Create new post instead</option>';
+    
+    posts.forEach(post => {
+        const option = document.createElement('option');
+        option.value = post.id;
+        option.textContent = post.title || 'Untitled Post';
+        select.appendChild(option);
+    });
+}
+
+function createPostFromDeadline() {
+    const name = document.getElementById('deadline-name').value.trim();
+    if (!name) {
+        showToast('Enter deadline name first', 'warning');
+        return;
+    }
+    
+    const newPost = {
+        id: Date.now(),
+        title: name,
+        scene: '',
+        concept: '',
+        tags: [],
+        caption: '',
+        sponsors: [],
+        avatars: [],
+        inspirationImages: [],
+        imageData: '',
+        hostedImageUrl: '',
+        blueskyLink: '',
+        sponsorMentions: '',
+        createdAt: new Date().toLocaleString()
+    };
+    
+    posts.push(newPost);
+    saveData();
+    updatePostSelect();
+    document.getElementById('deadline-post-id').value = newPost.id;
+    showToast(`📝 Post "${name}" created!`, 'success');
 }
 
 function closeEventModal() {
@@ -2128,42 +2844,130 @@ function closeEventModal() {
     currentEventId = null;
 }
 
-function saveEvent() {
-    const name = document.getElementById('event-name').value.trim();
-    const date = document.getElementById('event-date').value;
-    const type = document.getElementById('event-type').value;
-    const notes = document.getElementById('event-notes').value.trim();
+function saveDeadline() {
+    const type = document.getElementById('deadline-type').value;
+    const name = document.getElementById('deadline-name').value.trim();
+    const priority = document.getElementById('deadline-priority').value;
+    const notes = document.getElementById('deadline-notes').value.trim();
     
-    if (!name || !date) {
-        showToast('Please fill in event name and date', 'error');
+    if (!name) {
+        showToast('Please enter a name', 'error');
         return;
+    }
+    
+    let sponsor = '';
+    let sponsorImage = '';
+    let eventName = '';
+    let eventDeadlineImage = '';
+    let date = '';
+    let eventDate = '';
+    let theme = '';
+    let eventImage = '';
+    let postId = null;
+    
+    if (type === 'sponsor') {
+        sponsor = document.getElementById('deadline-sponsor').value.trim();
+        date = document.getElementById('deadline-date').value;
+        postId = document.getElementById('deadline-post-id').value || null;
+        
+        const sponsorImagePreview = document.getElementById('sponsor-image-preview');
+        if (sponsorImagePreview && sponsorImagePreview.querySelector('img')) {
+            sponsorImage = sponsorImagePreview.querySelector('img').src;
+        }
+        
+        if (!sponsor) {
+            showToast('Please enter sponsor name', 'error');
+            return;
+        }
+        if (!date) {
+            showToast('Please enter due date', 'error');
+            return;
+        }
+    } else if (type === 'event-deadline') {
+        eventName = document.getElementById('deadline-event-name').value.trim();
+        date = document.getElementById('deadline-date').value;
+        postId = document.getElementById('deadline-post-id').value || null;
+        
+        const eventDeadlineImagePreview = document.getElementById('event-deadline-image-preview');
+        if (eventDeadlineImagePreview && eventDeadlineImagePreview.querySelector('img')) {
+            eventDeadlineImage = eventDeadlineImagePreview.querySelector('img').src;
+        }
+        
+        if (!eventName) {
+            showToast('Please enter event name', 'error');
+            return;
+        }
+        if (!date) {
+            showToast('Please enter due date', 'error');
+            return;
+        }
+    } else if (type === 'event') {
+        eventDate = document.getElementById('deadline-event-date').value;
+        theme = document.getElementById('deadline-event-theme').value.trim();
+        
+        if (!eventDate) {
+            showToast('Please enter event date', 'error');
+            return;
+        }
+        
+        // Get event image if uploaded
+        const imagePreview = document.getElementById('event-image-preview');
+        if (imagePreview && imagePreview.querySelector('img')) {
+            eventImage = imagePreview.querySelector('img').src;
+        }
     }
     
     if (currentEventId) {
         // Edit existing event
         const index = events.findIndex(e => e.id === currentEventId);
         if (index !== -1) {
-            events[index] = { ...events[index], name, date, type, notes };
-            showToast('Event updated!', 'success');
+            events[index] = {
+                ...events[index],
+                type,
+                name,
+                priority,
+                notes,
+                sponsor,
+                sponsorImage,
+                eventName,
+                eventDeadlineImage,
+                date,
+                eventDate,
+                theme,
+                eventImage,
+                postId
+            };
+            showToast('Updated!', 'success');
         }
     } else {
         // Create new event
         const newEvent = {
             id: Date.now(),
-            name,
-            date,
             type,
+            name,
+            priority,
             notes,
+            sponsor,
+            sponsorImage,
+            eventName,
+            eventDeadlineImage,
+            date,
+            eventDate,
+            theme,
+            eventImage,
+            postId,
             createdAt: new Date().toLocaleString()
         };
         events.push(newEvent);
-        showToast('Event added!', 'success');
+        showToast('Added!', 'success');
     }
     
     saveData();
     updateEventsList();
     closeEventModal();
 }
+
+
 
 function deleteEvent(eventId) {
     if (confirm('Delete this event?')) {
@@ -2177,39 +2981,102 @@ function deleteEvent(eventId) {
 function updateEventsList() {
     const container = document.getElementById('events-list');
     
-    // Sort events by date
-    const sortedEvents = [...events].sort((a, b) => new Date(a.date) - new Date(b.date));
-    
-    if (sortedEvents.length === 0) {
+    if (events.length === 0) {
         container.innerHTML = '<p class="empty-state">No events or deadlines yet. Add one to get started!</p>';
         return;
     }
     
+    // Sort events: events by date, then deadlines by date
+    const sortedEvents = [...events].sort((a, b) => {
+        const dateA = new Date(a.type === 'event' ? (a.eventDate || a.date) : a.date);
+        const dateB = new Date(b.type === 'event' ? (b.eventDate || b.date) : b.date);
+        return dateA - dateB;
+    });
+    
     container.innerHTML = sortedEvents.map(event => {
-        const eventDate = new Date(event.date);
-        const day = eventDate.getDate();
-        const month = eventDate.toLocaleDateString('en-US', { month: 'short' });
-        const isPast = eventDate < new Date();
+        let cardDate;
+        let isPast = false;
+        let daysUntil = 0;
+        
+        if (event.type === 'event') {
+            // For Event type, show the event date
+            cardDate = new Date(event.eventDate);
+        } else {
+            // For Sponsor/Event Deadline, show due date
+            cardDate = new Date(event.date);
+        }
+        
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        cardDate.setHours(0, 0, 0, 0);
+        daysUntil = Math.ceil((cardDate - today) / (1000 * 60 * 60 * 24));
+        isPast = daysUntil < 0;
+        
+        const day = cardDate.getDate();
+        const month = cardDate.toLocaleDateString('en-US', { month: 'short' });
+        
+        // Create urgency badge with emoji
+        let urgencyBadge = '';
+        let urgencyClass = '';
+        if (!isPast) {
+            if (daysUntil === 0) {
+                urgencyBadge = '<span class="urgency-badge urgency-today">🔴 TODAY!</span>';
+                urgencyClass = 'event-urgency-critical';
+            } else if (daysUntil === 1) {
+                urgencyBadge = '<span class="urgency-badge urgency-tomorrow">⚠️ TOMORROW</span>';
+                urgencyClass = 'event-urgency-critical';
+            } else if (daysUntil <= 3) {
+                urgencyBadge = `<span class="urgency-badge urgency-soon">⚠️ ${daysUntil} days left</span>`;
+                urgencyClass = 'event-urgency-warning';
+            } else if (daysUntil <= 7) {
+                urgencyBadge = `<span class="urgency-badge urgency-week">⏰ 1 week</span>`;
+                urgencyClass = 'event-urgency-caution';
+            }
+        }
+        
+        const priorityColor = event.priority === 'high' ? '🔴' : event.priority === 'medium' ? '🟠' : '⚫';
+        const priorityBadge = event.priority ? `<span class="priority-badge priority-${event.priority}">${priorityColor} ${event.priority.toUpperCase()}</span>` : '';
+        const daysText = isPast ? '<span style="color: var(--text-secondary);">✓ Passed</span>' : `<strong>${daysUntil}d</strong>`;
+        
+        let typeInfo = '';
+        if (event.type === 'sponsor') {
+            typeInfo = `<div class="event-subtitle">👤 Sponsor: ${escapeHtml(event.sponsor || 'Unnamed')}</div>`;
+        } else if (event.type === 'event-deadline') {
+            typeInfo = `<div class="event-subtitle">📍 Event: ${escapeHtml(event.eventName || 'Unnamed')}</div>`;
+        } else if (event.type === 'event') {
+            typeInfo = `<div class="event-subtitle">🎉 Event</div>`;
+            if (event.theme) {
+                typeInfo += `<div class="event-theme">🎨 Theme: ${escapeHtml(event.theme)}</div>`;
+            }
+        }
+        
+        const postInfo = event.postId && event.type !== 'event' ? `<div class="event-post-link"><small>📝 Post linked</small></div>` : '';
+        const imageDisplay = event.eventImage && event.type === 'event' ? `<img src="${event.eventImage}" alt="${escapeHtml(event.name)}" class="event-thumbnail">` : '';
         
         return `
-            <div class="event-card ${isPast ? 'event-past' : ''}">
+            <div class="event-card ${isPast ? 'event-past' : ''} ${urgencyClass} ${event.priority === 'high' ? 'event-priority-high' : event.priority === 'medium' ? 'event-priority-medium' : 'event-priority-low'}">
+                ${imageDisplay}
                 <div class="event-date-badge">
-                    <div class="event-date-day">${day}</div>
-                    <div class="event-date-month">${month}</div>
+                    <div class="event-countdown">${daysText}</div>
+                    <div class="event-date-month">${month} ${day}</div>
                 </div>
                 <div class="event-info">
-                    <div class="event-name">${event.name}</div>
-                    <div class="event-details">${event.notes || 'No additional details'}</div>
+                    <div class="event-name">${escapeHtml(event.name)}</div>
+                    ${typeInfo}
+                    ${event.notes ? `<div class="event-notes"><small>📌 ${escapeHtml(event.notes)}</small></div>` : ''}
+                    ${postInfo}
                 </div>
-                <div class="event-type-badge event-type-${event.type}">${event.type}</div>
                 <div class="event-actions">
-                    <button onclick="openEventModal(${event.id})">Edit</button>
-                    <button onclick="deleteEvent(${event.id})">Delete</button>
+                    ${urgencyBadge}
+                    ${priorityBadge}
+                    <button type="button" class="btn-sm" onclick="openEventModal(${event.id})" title="Edit">✏️</button>
+                    <button type="button" class="btn-sm" onclick="deleteEvent(${event.id})" title="Delete">🗑️</button>
                 </div>
             </div>
         `;
     }).join('');
 }
+
 
 // ============================================
 // Keyboard Shortcuts
@@ -2319,6 +3186,75 @@ function saveData() {
     }
 }
 
+// ============================================
+// Auto-Backup Functionality
+// ============================================
+
+let autoBackupInterval = null;
+
+function createBackup() {
+    try {
+        const backupData = {
+            timestamp: new Date().toISOString(),
+            posts: posts,
+            settings: settings,
+            events: events,
+            library: savedLibrary
+        };
+        localStorage.setItem('blogplanner-backup', JSON.stringify(backupData));
+        console.log('Auto-backup created at', backupData.timestamp);
+    } catch (e) {
+        console.error('Backup error:', e);
+    }
+}
+
+function startAutoBackup() {
+    // Create initial backup
+    createBackup();
+    
+    // Set up 10-minute interval (600000 ms)
+    autoBackupInterval = setInterval(createBackup, 600000);
+}
+
+function restoreFromBackup() {
+    try {
+        const backup = localStorage.getItem('blogplanner-backup');
+        if (!backup) {
+            showToast('No backup available', 'info');
+            return false;
+        }
+        
+        const backupData = JSON.parse(backup);
+        posts = backupData.posts || [];
+        settings = backupData.settings || settings;
+        events = backupData.events || [];
+        savedLibrary = backupData.library || savedLibrary;
+        
+        saveData();
+        showToast(`✅ Restored from backup (${new Date(backupData.timestamp).toLocaleString()})`, 'success');
+        return true;
+    } catch (e) {
+        showToast('Error restoring backup: ' + e.message, 'error');
+        return false;
+    }
+}
+
+function getBackupInfo() {
+    try {
+        const backup = localStorage.getItem('blogplanner-backup');
+        if (!backup) return null;
+        
+        const backupData = JSON.parse(backup);
+        return {
+            timestamp: backupData.timestamp,
+            postCount: backupData.posts?.length || 0,
+            eventCount: backupData.events?.length || 0
+        };
+    } catch (e) {
+        return null;
+    }
+}
+
 function loadData() {
     try {
         const savedPosts = localStorage.getItem('blogplanner-posts');
@@ -2334,3 +3270,107 @@ function loadData() {
         showToast('Error loading data: ' + e.message, 'error');
     }
 }
+
+// ============================================
+// Dashboard Navigation
+// ============================================
+
+function goToDashboard() {
+    switchSection('dashboard');
+}
+
+// ============================================
+// Notes List Editor
+// ============================================
+
+function setupNotesList() {
+    const notesInput = document.getElementById('notes-input');
+    if (!notesInput) return;
+
+    notesInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            addNote();
+        }
+    });
+
+    renderNotesList();
+}
+
+function loadNotes() {
+    if (!currentPost) return [];
+    return currentPost.notes || [];
+}
+
+function saveNotes(notes) {
+    if (currentPost) {
+        currentPost.notes = notes;
+    }
+}
+
+function addNote() {
+    const input = document.getElementById('notes-input');
+    if (!input || !input.value.trim()) return;
+
+    if (!currentPost) {
+        currentPost = { notes: [] };
+    }
+    if (!currentPost.notes) {
+        currentPost.notes = [];
+    }
+
+    currentPost.notes.push(input.value.trim());
+    input.value = '';
+    renderNotesList();
+}
+
+function deleteNote(index) {
+    if (!currentPost || !currentPost.notes) return;
+    currentPost.notes.splice(index, 1);
+    renderNotesList();
+}
+
+function renderNotesList() {
+    const notesList = document.getElementById('notes-list');
+    if (!notesList) return;
+
+    const notes = currentPost?.notes || [];
+
+    if (notes.length === 0) {
+        notesList.innerHTML = '';
+        return;
+    }
+
+    notesList.innerHTML = notes.map((note, index) => `
+        <li class="note-item">
+            <span class="note-text">${escapeHtml(note)}</span>
+            <button type="button" class="note-delete" onclick="deleteNote(${index})" title="Delete note">✕</button>
+        </li>
+    `).join('');
+}
+
+// ============================================
+// Concept Editor (removed - using notes list instead)
+// ============================================
+
+function normalizeProjectTasks(tasks) {
+    let changed = false;
+    const cleaned = (tasks || []).reduce((acc, task) => {
+        const title = (task.title || '').trim();
+        if (!title) { changed = true; return acc; }
+        const subtasks = (task.subtasks || []).reduce((subs, sub) => {
+            const st = (sub.title || '').trim();
+            if (!st) { changed = true; return subs; }
+            subs.push({ ...sub, title: st });
+            return subs;
+        }, []);
+        acc.push({ ...task, title, subtasks });
+        return acc;
+    }, []);
+    return { tasks: cleaned, changed };
+}
+
+// Tasks feature removed - kept as reference
+// Project tasks now use simple notes in each post instead
+
+
