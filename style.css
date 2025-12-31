@@ -1281,6 +1281,19 @@ input[type="file"] {
     display: block;
 }
 
+.inspiration-status {
+    position: absolute;
+    bottom: 5px;
+    left: 5px;
+    background: rgba(0, 0, 0, 0.7);
+    color: #fbbf24;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
 .inspiration-item .remove-inspiration {
     position: absolute;
     top: 5px;

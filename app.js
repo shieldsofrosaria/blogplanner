@@ -252,6 +252,10 @@ function setupAutosaveListeners() {
 // ============================================
 
 function switchSection(sectionId) {
+    // Get current section before switching
+    const currentSection = document.querySelector('section.active');
+    const currentSectionId = currentSection?.id;
+    
     // Hide all sections
     document.querySelectorAll('section').forEach(s => s.classList.remove('active'));
     
@@ -274,6 +278,11 @@ function switchSection(sectionId) {
     const titleEl = document.getElementById('section-title');
     if (titleEl) {
         titleEl.textContent = sectionTitles[sectionId] || 'Blog Planner';
+    }
+    
+    // Clear form when leaving new-post section (unless editing)
+    if (currentSectionId === 'new-post' && sectionId !== 'new-post' && !currentPost?.id) {
+        clearForm();
     }
     
     // Initialize settings sections when showing settings page
@@ -1429,12 +1438,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Inspiration images handler
+    // Inspiration images handler (allow multiple files from different sources)
     const inspirationInput = document.getElementById('inspiration-images');
     if (inspirationInput) {
         inspirationInput.addEventListener('change', (e) => {
-            const files = Array.from(e.target.files || []).filter(f => f.type.startsWith('image/'));
-            renderInspirationFiles(files);
+            const newFiles = Array.from(e.target.files || []).filter(f => f.type.startsWith('image/'));
+            renderInspirationFiles(newFiles);
         });
     }
 
@@ -1489,24 +1498,43 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function renderInspirationFiles(files) {
     if (!files || !files.length) return;
-    inspirationImages = [];
     const gallery = document.getElementById('inspiration-gallery');
-    gallery.innerHTML = '';
+    const startIndex = inspirationImages.length;
 
-    files.forEach((file, index) => {
+    files.forEach((file, fileIndex) => {
         const reader = new FileReader();
-        reader.onload = (event) => {
+        reader.onload = async (event) => {
             inspirationImages.push(event.target.result);
+            const actualIndex = startIndex + fileIndex;
             const item = document.createElement('div');
             item.className = 'inspiration-item';
             item.innerHTML = `
-                <img src="${event.target.result}" alt="Inspiration ${index + 1}">
-                <button type="button" class="remove-inspiration" onclick="removeInspirationImage(${index})">✕</button>
+                <img src="${event.target.result}" alt="Inspiration ${actualIndex + 1}">
+                <div class="inspiration-status">⏳ Uploading...</div>
+                <button type="button" class="remove-inspiration" onclick="removeInspirationImage(${actualIndex})">✕</button>
             `;
             gallery.appendChild(item);
+            
+            // Upload to ImgBB if API key is available
+            if (settings.imgbbKey) {
+                const imageUrl = await uploadToImgBB(file);
+                const statusDiv = item.querySelector('.inspiration-status');
+                if (imageUrl) {
+                    statusDiv.textContent = '✅ Uploaded';
+                    statusDiv.style.color = '#22c55e';
+                } else {
+                    statusDiv.textContent = '⚠️ Upload failed';
+                    statusDiv.style.color = '#ef4444';
+                }
+            } else {
+                const statusDiv = item.querySelector('.inspiration-status');
+                statusDiv.textContent = '⚠️ No ImgBB key';
+                statusDiv.style.color = '#f59e0b';
+            }
         };
         reader.readAsDataURL(file);
     });
+    scheduleDraftSave();
 }
 
 function removeInspirationImage(index) {
@@ -2588,6 +2616,11 @@ function loadDataInit() {
         normalizeLibraryTypes();
     }
     
+    if (savedEvents) {
+        events = JSON.parse(savedEvents);
+        console.log('Loaded events:', events.length);
+    }
+    
     // Update API status indicators
     updateApiKeyStatus();
     updateStoreDatalist();
@@ -3133,45 +3166,6 @@ function setupKeyboardShortcuts() {
 }
 
 // ============================================
-// Enhanced Search
-// ============================================
-
-function enhancedSearch(searchTerm) {
-    if (!searchTerm) return posts;
-    
-    const term = searchTerm.toLowerCase();
-    return posts.filter(post => {
-        // Search in title
-        if ((post.title || '').toLowerCase().includes(term)) return true;
-        
-        // Search in caption
-        if ((post.caption || '').toLowerCase().includes(term)) return true;
-        
-        // Search in sponsors
-        if ((post.sponsors || []).some(s => 
-            (s.store || '').toLowerCase().includes(term) ||
-            (s.itemName || '').toLowerCase().includes(term)
-        )) return true;
-        
-        // Search in credits
-        if ((post.credits || []).some(c => 
-            (c.store || '').toLowerCase().includes(term) ||
-            (c.itemName || '').toLowerCase().includes(term)
-        )) return true;
-        
-        // Search in tags
-        if ((post.tags || []).some(tag => tag.toLowerCase().includes(term))) return true;
-        
-        return false;
-    });
-}
-
-function setPostsSearch(value) {
-    postSearchTerm = value.toLowerCase();
-    updatePostsList();
-}
-
-// ============================================
 // Data Management (Enhanced)
 // ============================================
 
@@ -3348,29 +3342,5 @@ function renderNotesList() {
         </li>
     `).join('');
 }
-
-// ============================================
-// Concept Editor (removed - using notes list instead)
-// ============================================
-
-function normalizeProjectTasks(tasks) {
-    let changed = false;
-    const cleaned = (tasks || []).reduce((acc, task) => {
-        const title = (task.title || '').trim();
-        if (!title) { changed = true; return acc; }
-        const subtasks = (task.subtasks || []).reduce((subs, sub) => {
-            const st = (sub.title || '').trim();
-            if (!st) { changed = true; return subs; }
-            subs.push({ ...sub, title: st });
-            return subs;
-        }, []);
-        acc.push({ ...task, title, subtasks });
-        return acc;
-    }, []);
-    return { tasks: cleaned, changed };
-}
-
-// Tasks feature removed - kept as reference
-// Project tasks now use simple notes in each post instead
 
 
