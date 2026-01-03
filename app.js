@@ -56,6 +56,7 @@ document.addEventListener('DOMContentLoaded', () => {
     updateExportPresetDropdown();
     startSidebarClock();
     setupNotesList();
+    updateUpcomingEvents();
     showToast('Blog Planner loaded!', 'success');
     switchSection('dashboard'); // Start on dashboard
 });
@@ -117,6 +118,67 @@ function setupEventListeners() {
         }
     });
 
+}
+
+function updateUpcomingEvents() {
+    const list = document.getElementById('upcoming-events-list');
+    if (!list) return;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // Get events from next 30 days
+    const thirtyDaysFromNow = new Date(today);
+    thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+
+    const upcoming = events.filter(event => {
+        const startStr = event.type === 'event'
+            ? (event.eventStartDate || event.eventDate || event.date)
+            : (event.startDate || event.date);
+        const start = parseDateInput(startStr);
+        return start && start >= today && start <= thirtyDaysFromNow;
+    }).sort((a, b) => {
+        const getDate = (ev) => {
+            const dateStr = ev.type === 'event'
+                ? (ev.eventStartDate || ev.eventDate || ev.date)
+                : (ev.startDate || ev.date);
+            return parseDateInput(dateStr);
+        };
+        const dateA = getDate(a);
+        const dateB = getDate(b);
+        return dateA - dateB;
+    });
+
+    if (upcoming.length === 0) {
+        list.innerHTML = '<p class="empty-state">No upcoming events in the next 30 days.</p>';
+        return;
+    }
+
+    list.innerHTML = upcoming.map(event => {
+        const dateStr = event.type === 'event'
+            ? (event.eventStartDate || event.eventDate || event.date)
+            : (event.startDate || event.date);
+        const startDate = parseDateInput(dateStr);
+        const daysAway = Math.ceil((startDate - today) / (1000 * 60 * 60 * 24));
+        const dateLabel = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(startDate);
+        const typeIcon = event.type === 'sponsor' ? '👤' : event.type === 'event-deadline' ? '📋' : '🎉';
+        const priorityIcon = event.priority === 'high' ? '🔴' : event.priority === 'medium' ? '🟠' : '⚫';
+        const daysLabel = daysAway === 0 ? '🔥 Today!' : daysAway === 1 ? 'Tomorrow' : `In ${daysAway} days`;
+        const linked = event.postId && event.type !== 'event' ? ' 📝' : '';
+        
+        return `
+            <div class="upcoming-event-item" onclick="openEventPreview(${event.id})" style="cursor:pointer;">
+                <div class="upcoming-event-left">
+                    <span class="upcoming-icon">${typeIcon}</span>
+                    <div class="upcoming-info">
+                        <div class="upcoming-title">${escapeHtml(event.name || 'Untitled')}${linked}</div>
+                        <div class="upcoming-date">${dateLabel} • ${daysLabel}</div>
+                    </div>
+                </div>
+                <span class="upcoming-priority">${priorityIcon}</span>
+            </div>
+        `;
+    }).join('');
 }
 
 function startSidebarClock() {
@@ -280,8 +342,9 @@ function switchSection(sectionId) {
         titleEl.textContent = sectionTitles[sectionId] || 'Blog Planner';
     }
     
-    // Clear form when leaving new-post section (unless editing)
+    // Save draft before leaving new-post section (unless editing)
     if (currentSectionId === 'new-post' && sectionId !== 'new-post' && !currentPost?.id) {
+        saveDraft();
         clearForm();
     }
     
@@ -293,6 +356,11 @@ function switchSection(sectionId) {
     // Reset wizard to step 1 when returning to new post
     if (sectionId === 'new-post') {
         goToStep(1);
+        // Check if there's a saved draft and offer to restore
+        const hasDraft = localStorage.getItem(draftKey);
+        if (hasDraft) {
+            showDraftRestorePrompt();
+        }
     }
     
     // Refresh data if needed
@@ -736,7 +804,7 @@ function toggleEventFields(checkbox) {
     const row = checkbox.closest('.sponsor-row, .credit-row');
     const eventFields = row.querySelector('.event-fields');
     if (eventFields) {
-        eventFields.style.display = checkbox.checked ? 'flex' : 'none';
+        eventFields.style.display = checkbox.checked ? 'grid' : 'none';
     }
 }
 
@@ -766,14 +834,6 @@ function addSponsor() {
         <input type="text" name="sponsor-store" aria-label="Sponsor store" placeholder="Creator/Store" class="sponsor-store" list="saved-stores">
         <input type="text" name="sponsor-item" aria-label="Sponsor item" placeholder="Item Name" class="sponsor-item">
         <input type="url" name="sponsor-link" aria-label="Sponsor store link" placeholder="Store Link (SL/MP)" class="sponsor-link" title="In-world landmark or Marketplace URL">
-        <div class="event-fields" style="display: none;">
-            <input type="text" name="sponsor-event" aria-label="Sponsor event" placeholder="Event Name" class="sponsor-event">
-            <input type="url" name="sponsor-event-link" aria-label="Sponsor event landmark" placeholder="Event Landmark" class="sponsor-event-link" title="Event in-world landmark">
-        </div>
-        <label class="event-toggle">
-            <input type="checkbox" class="event-checkbox" onchange="toggleEventFields(this)">
-            <span title="Show/hide event details">📅</span>
-        </label>
         <button type="button" class="btn-remove" onclick="removeCredit(this)">✕</button>
     `;
     
@@ -792,14 +852,6 @@ function addCredit() {
         <input type="text" name="credit-store" aria-label="Credit store" placeholder="Creator/Store" class="credit-store" list="saved-stores">
         <input type="text" name="credit-item" aria-label="Credit item" placeholder="Item Name" class="credit-item-name">
         <input type="url" name="credit-link" aria-label="Credit store link" placeholder="Store Link (SL/MP)" class="credit-link" title="In-world landmark or Marketplace URL">
-        <div class="event-fields" style="display: none;">
-            <input type="text" name="credit-event" aria-label="Credit event" placeholder="Event Name" class="credit-event">
-            <input type="url" name="credit-event-link" aria-label="Credit event landmark" placeholder="Event Landmark" class="credit-event-link" title="Event in-world landmark">
-        </div>
-        <label class="event-toggle">
-            <input type="checkbox" class="event-checkbox" onchange="toggleEventFields(this)">
-            <span title="Show/hide event details">📅</span>
-        </label>
         <button type="button" class="btn-remove" onclick="removeCredit(this)">✕</button>
     `;
     
@@ -1320,15 +1372,22 @@ function showUndoToast(message, onUndo) {
 }
 
 function clearForm() {
-    document.getElementById('post-title').value = '';
-    document.getElementById('post-avatar').value = '';
-    document.getElementById('post-scene').value = '';
-    document.getElementById('notes-input').value = '';
-    document.getElementById('post-tags').value = '';
-    document.getElementById('blog-image').value = '';
-    document.getElementById('inspiration-images').value = '';
-    document.getElementById('post-caption').value = '';
-    document.getElementById('bluesky-link').value = '';
+    // Helper function for safe element access
+    const safeSet = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.value = value;
+    };
+    
+    safeSet('post-title', '');
+    safeSet('post-scene', '');
+    safeSet('notes-input', '');
+    safeSet('post-tags', '');
+    safeSet('blog-image', '');
+    safeSet('inspiration-images', '');
+    safeSet('post-caption', '');
+    safeSet('bluesky-link', '');
+    safeSet('sponsor-mentions', '');
+    
     inspirationImages = [];
     currentPost = { notes: [] };
     
@@ -1336,34 +1395,47 @@ function clearForm() {
     renderNotesList();
     
     // Reset sponsors
-    document.getElementById('sponsors-list').innerHTML = `
-        <div class="sponsor-row">
-            <input type="text" name="sponsor-store" aria-label="Sponsor store" placeholder="Creator/Store" class="sponsor-store" list="saved-stores">
-            <input type="text" name="sponsor-item" aria-label="Sponsor item" placeholder="Item Name" class="sponsor-item">
-            <input type="url" name="sponsor-link" aria-label="Sponsor store link" placeholder="Store Link (SL/MP)" class="sponsor-link" title="In-world landmark or Marketplace URL">
-            <input type="text" name="sponsor-event" aria-label="Sponsor event" placeholder="Event Name" class="sponsor-event">
-            <input type="url" name="sponsor-event-link" aria-label="Sponsor event landmark" placeholder="Event Landmark" class="sponsor-event-link" title="Event in-world landmark">
-            <button type="button" class="btn-remove" onclick="removeCredit(this)">✕</button>
-        </div>
-    `;
+    const sponsorsList = document.getElementById('sponsors-list');
+    if (sponsorsList) {
+        sponsorsList.innerHTML = `
+            <div class="sponsor-row">
+                <input type="text" name="sponsor-store" aria-label="Sponsor store" placeholder="Creator/Store" class="sponsor-store" list="saved-stores">
+                <input type="text" name="sponsor-item" aria-label="Sponsor item" placeholder="Item Name" class="sponsor-item">
+                <input type="url" name="sponsor-link" aria-label="Sponsor store link" placeholder="Store Link (SL/MP)" class="sponsor-link" title="In-world landmark or Marketplace URL">
+                <input type="text" name="sponsor-event" aria-label="Sponsor event" placeholder="Event Name" class="sponsor-event">
+                <input type="url" name="sponsor-event-link" aria-label="Sponsor event landmark" placeholder="Event Landmark" class="sponsor-event-link" title="Event in-world landmark">
+                <button type="button" class="btn-remove" onclick="removeCredit(this)">✕</button>
+            </div>
+        `;
+    }
     
     // Reset credits
-    document.getElementById('credits-list').innerHTML = `
-        <div class="credit-row">
-            <input type="text" name="credit-store" aria-label="Credit store" placeholder="Creator/store" class="credit-store" list="saved-stores">
-            <input type="text" name="credit-item" aria-label="Credit item" placeholder="Item name" class="credit-item-name">
-            <input type="url" name="credit-link" aria-label="Credit store link" placeholder="Store link (SL/MP)" class="credit-link" title="In-world landmark or Marketplace URL">
-            <input type="text" name="credit-event" aria-label="Credit event" placeholder="Event Name" class="credit-event">
-            <input type="url" name="credit-event-link" aria-label="Credit event landmark" placeholder="Event Landmark" class="credit-event-link" title="Event in-world landmark">
-            <button type="button" class="btn-remove" onclick="removeCredit(this)">✕</button>
-        </div>
-    `;
+    const creditsList = document.getElementById('credits-list');
+    if (creditsList) {
+        creditsList.innerHTML = `
+            <div class="credit-row">
+                <input type="text" name="credit-store" aria-label="Credit store" placeholder="Creator/store" class="credit-store" list="saved-stores">
+                <input type="text" name="credit-item" aria-label="Credit item" placeholder="Item name" class="credit-item-name">
+                <input type="url" name="credit-link" aria-label="Credit store link" placeholder="Store link (SL/MP)" class="credit-link" title="In-world landmark or Marketplace URL">
+                <input type="text" name="credit-event" aria-label="Credit event" placeholder="Event Name" class="credit-event">
+                <input type="url" name="credit-event-link" aria-label="Credit event landmark" placeholder="Event Landmark" class="credit-event-link" title="Event in-world landmark">
+                <button type="button" class="btn-remove" onclick="removeCredit(this)">✕</button>
+            </div>
+        `;
+    }
     
-    document.getElementById('image-preview').innerHTML = '';
-    document.getElementById('inspiration-gallery').innerHTML = '';
-    document.getElementById('sponsor-mentions').value = '';
-    document.getElementById('hosted-image-url').value = '';
-    document.getElementById('image-url-container').classList.add('hidden');
+    const imagePreview = document.getElementById('image-preview');
+    if (imagePreview) imagePreview.innerHTML = '';
+    
+    const inspirationGallery = document.getElementById('inspiration-gallery');
+    if (inspirationGallery) inspirationGallery.innerHTML = '';
+    
+    const imageUrlContainer = document.getElementById('image-url-container');
+    if (imageUrlContainer) imageUrlContainer.classList.add('hidden');
+    
+    const hostedImageUrl = document.getElementById('hosted-image-url');
+    if (hostedImageUrl) hostedImageUrl.value = '';
+    
     clearDraft();
 }
 
@@ -1651,6 +1723,28 @@ function loadDraft() {
         console.error('Draft restore failed', e);
         localStorage.removeItem(draftKey);
     }
+}
+
+function showDraftRestorePrompt() {
+    const draftToast = document.createElement('div');
+    draftToast.className = 'toast toast-info draft-restore-toast';
+    draftToast.innerHTML = `
+        <div class="toast-content">
+            <div class="toast-message">💾 You have a saved draft. Restore it?</div>
+            <div class="toast-actions">
+                <button class="btn-sm btn-primary" onclick="loadDraft(); this.closest('.draft-restore-toast').remove();">Restore</button>
+                <button class="btn-sm btn-secondary" onclick="clearDraft(); this.closest('.draft-restore-toast').remove();">Discard</button>
+            </div>
+        </div>
+    `;
+    document.getElementById('toast-container').appendChild(draftToast);
+    
+    setTimeout(() => {
+        if (draftToast.parentElement) {
+            draftToast.style.animation = 'slideOutRight 0.3s ease';
+            setTimeout(() => draftToast.remove(), 300);
+        }
+    }, 8000);
 }
 
 function clearDraft() {
@@ -2738,6 +2832,26 @@ function updateRecentPosts() {
 // Events & Deadlines Functions
 // ============================================
 
+function parseDateInput(value) {
+    if (!value) return null;
+    const parts = value.split('-').map(Number);
+    if (parts.length !== 3 || parts.some(isNaN)) return null;
+    const [year, month, day] = parts;
+    return new Date(year, month - 1, day); // local midnight
+}
+
+function formatMonthLabel(year, month) {
+    return new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' }).format(new Date(year, month, 1));
+}
+
+function inRange(target, start, end) {
+    if (!target || !start) return false;
+    const s = start.getTime();
+    const e = end ? end.getTime() : start.getTime();
+    const t = target.getTime();
+    return t >= s && t <= e;
+}
+
 function updateDeadlineForm() {
     const type = document.getElementById('deadline-type').value;
     
@@ -2771,7 +2885,9 @@ function updateDeadlineForm() {
     }
 }
 
-function openEventModal(eventId = null) {
+function openEventModal(eventId = null, defaultStart = null, defaultEnd = null) {
+    // Ensure preview is closed when opening the full modal
+    closeEventPreview();
     currentEventId = eventId;
     const modal = document.getElementById('event-modal');
     const title = document.getElementById('event-modal-title');
@@ -2781,8 +2897,10 @@ function openEventModal(eventId = null) {
     document.getElementById('deadline-name').value = '';
     document.getElementById('deadline-sponsor').value = '';
     document.getElementById('deadline-event-name').value = '';
-    document.getElementById('deadline-date').value = '';
-    document.getElementById('deadline-event-date').value = '';
+    document.getElementById('deadline-start-date').value = defaultStart || '';
+    document.getElementById('deadline-end-date').value = defaultEnd || '';
+    document.getElementById('deadline-event-start-date').value = defaultStart || '';
+    document.getElementById('deadline-event-end-date').value = defaultEnd || '';
     document.getElementById('deadline-event-theme').value = '';
     document.getElementById('deadline-priority').value = 'medium';
     document.getElementById('deadline-notes').value = '';
@@ -2802,8 +2920,10 @@ function openEventModal(eventId = null) {
             document.getElementById('deadline-name').value = event.name;
             document.getElementById('deadline-sponsor').value = event.sponsor || '';
             document.getElementById('deadline-event-name').value = event.eventName || '';
-            document.getElementById('deadline-date').value = event.date || '';
-            document.getElementById('deadline-event-date').value = event.eventDate || '';
+            document.getElementById('deadline-start-date').value = event.startDate || event.date || '';
+            document.getElementById('deadline-end-date').value = event.endDate || '';
+            document.getElementById('deadline-event-start-date').value = event.eventStartDate || event.eventDate || '';
+            document.getElementById('deadline-event-end-date').value = event.eventEndDate || '';
             document.getElementById('deadline-event-theme').value = event.theme || '';
             document.getElementById('deadline-priority').value = event.priority || 'medium';
             document.getElementById('deadline-notes').value = event.notes || '';
@@ -2877,6 +2997,100 @@ function closeEventModal() {
     currentEventId = null;
 }
 
+function openEventPreview(eventId) {
+    const event = events.find(e => e.id === eventId);
+    if (!event) return;
+
+    // Hide modal if open
+    const modal = document.getElementById('event-modal');
+    if (modal) modal.classList.remove('active');
+
+    const card = document.getElementById('event-preview-card');
+    const { start, end } = getEventRange(event);
+    const dateLabel = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(start);
+    const rangeLabel = end && end.getTime() !== start.getTime()
+        ? ` - ${new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(end)}`
+        : '';
+
+    document.getElementById('preview-title').textContent = event.name || 'Untitled';
+    
+    const typeIcon = event.type === 'sponsor' ? '👤' : event.type === 'event-deadline' ? '📍' : '🎉';
+    const typeLabel = event.type === 'sponsor' ? 'Sponsor Deadline' : event.type === 'event-deadline' ? 'Event Deadline' : 'Scheduled Event';
+    const priorityColor = event.priority === 'high' ? '🔴' : event.priority === 'medium' ? '🟠' : '⚫';
+    
+    document.getElementById('preview-type-badge').innerHTML = `${typeIcon} ${typeLabel}`;
+    document.getElementById('preview-priority-badge').innerHTML = `${priorityColor} ${event.priority.toUpperCase()}`;
+
+    // Date
+    document.getElementById('preview-date-text').textContent = dateLabel + rangeLabel;
+
+    // Type-specific fields
+    const sponsorRow = document.getElementById('preview-sponsor-row');
+    const themeRow = document.getElementById('preview-theme-row');
+    const notesRow = document.getElementById('preview-notes-row');
+    const postRow = document.getElementById('preview-post-row');
+
+    if (event.type === 'sponsor' && event.sponsor) {
+        sponsorRow.style.display = '';
+        document.getElementById('preview-sponsor-text').textContent = event.sponsor;
+    } else {
+        sponsorRow.style.display = 'none';
+    }
+
+    if (event.type === 'event' && event.theme) {
+        themeRow.style.display = '';
+        document.getElementById('preview-theme-text').textContent = event.theme;
+    } else {
+        themeRow.style.display = 'none';
+    }
+
+    if (event.notes) {
+        notesRow.style.display = '';
+        document.getElementById('preview-notes-text').textContent = event.notes;
+    } else {
+        notesRow.style.display = 'none';
+    }
+
+    if (event.postId && event.type !== 'event') {
+        postRow.style.display = '';
+        const post = posts.find(p => p.id == event.postId);
+        document.getElementById('preview-post-text').textContent = post ? post.title || 'Linked Post' : 'Post';
+    } else {
+        postRow.style.display = 'none';
+    }
+
+    // Image
+    const imageEl = document.getElementById('preview-image');
+    const img = event.type === 'event' ? event.eventImage : event.type === 'event-deadline' ? event.eventDeadlineImage : event.sponsorImage;
+    if (img) {
+        imageEl.innerHTML = `<img src="${img}" alt="Event">`;
+        imageEl.style.display = '';
+    } else {
+        imageEl.style.display = 'none';
+    }
+
+    currentEventId = eventId;
+    card.classList.add('active');
+}
+
+function closeEventPreview() {
+    document.getElementById('event-preview-card').classList.remove('active');
+}
+
+function editEventFromPreview() {
+    closeEventPreview();
+    if (currentEventId) {
+        openEventModal(currentEventId);
+    }
+}
+
+function deleteEventFromPreview() {
+    if (confirm('Delete this event?')) {
+        closeEventPreview();
+        deleteEvent(currentEventId);
+    }
+}
+
 function saveDeadline() {
     const type = document.getElementById('deadline-type').value;
     const name = document.getElementById('deadline-name').value.trim();
@@ -2893,14 +3107,20 @@ function saveDeadline() {
     let eventName = '';
     let eventDeadlineImage = '';
     let date = '';
+    let startDate = '';
+    let endDate = '';
     let eventDate = '';
+    let eventStartDate = '';
+    let eventEndDate = '';
     let theme = '';
     let eventImage = '';
     let postId = null;
     
     if (type === 'sponsor') {
         sponsor = document.getElementById('deadline-sponsor').value.trim();
-        date = document.getElementById('deadline-date').value;
+        startDate = document.getElementById('deadline-start-date').value;
+        endDate = document.getElementById('deadline-end-date').value;
+        date = startDate; // legacy compatibility
         postId = document.getElementById('deadline-post-id').value || null;
         
         const sponsorImagePreview = document.getElementById('sponsor-image-preview');
@@ -2912,13 +3132,21 @@ function saveDeadline() {
             showToast('Please enter sponsor name', 'error');
             return;
         }
-        if (!date) {
+        if (!startDate) {
             showToast('Please enter due date', 'error');
+            return;
+        }
+        const startObj = parseDateInput(startDate);
+        const endObj = parseDateInput(endDate);
+        if (endObj && endObj < startObj) {
+            showToast('End date cannot be before start date', 'error');
             return;
         }
     } else if (type === 'event-deadline') {
         eventName = document.getElementById('deadline-event-name').value.trim();
-        date = document.getElementById('deadline-date').value;
+        startDate = document.getElementById('deadline-start-date').value;
+        endDate = document.getElementById('deadline-end-date').value;
+        date = startDate; // legacy compatibility
         postId = document.getElementById('deadline-post-id').value || null;
         
         const eventDeadlineImagePreview = document.getElementById('event-deadline-image-preview');
@@ -2930,16 +3158,30 @@ function saveDeadline() {
             showToast('Please enter event name', 'error');
             return;
         }
-        if (!date) {
+        if (!startDate) {
             showToast('Please enter due date', 'error');
             return;
         }
+        const startObj = parseDateInput(startDate);
+        const endObj = parseDateInput(endDate);
+        if (endObj && endObj < startObj) {
+            showToast('End date cannot be before start date', 'error');
+            return;
+        }
     } else if (type === 'event') {
-        eventDate = document.getElementById('deadline-event-date').value;
+        eventStartDate = document.getElementById('deadline-event-start-date').value;
+        eventEndDate = document.getElementById('deadline-event-end-date').value;
+        eventDate = eventStartDate; // legacy compatibility
         theme = document.getElementById('deadline-event-theme').value.trim();
         
-        if (!eventDate) {
-            showToast('Please enter event date', 'error');
+        if (!eventStartDate) {
+            showToast('Please enter event start date', 'error');
+            return;
+        }
+        const eventStartObj = parseDateInput(eventStartDate);
+        const eventEndObj = parseDateInput(eventEndDate);
+        if (eventEndObj && eventEndObj < eventStartObj) {
+            showToast('End date cannot be before start date', 'error');
             return;
         }
         
@@ -2965,7 +3207,11 @@ function saveDeadline() {
                 eventName,
                 eventDeadlineImage,
                 date,
+                startDate,
+                endDate,
                 eventDate,
+                eventStartDate,
+                eventEndDate,
                 theme,
                 eventImage,
                 postId
@@ -2985,7 +3231,11 @@ function saveDeadline() {
             eventName,
             eventDeadlineImage,
             date,
+            startDate,
+            endDate,
             eventDate,
+            eventStartDate,
+            eventEndDate,
             theme,
             eventImage,
             postId,
@@ -3012,102 +3262,7 @@ function deleteEvent(eventId) {
 }
 
 function updateEventsList() {
-    const container = document.getElementById('events-list');
-    
-    if (events.length === 0) {
-        container.innerHTML = '<p class="empty-state">No events or deadlines yet. Add one to get started!</p>';
-        return;
-    }
-    
-    // Sort events: events by date, then deadlines by date
-    const sortedEvents = [...events].sort((a, b) => {
-        const dateA = new Date(a.type === 'event' ? (a.eventDate || a.date) : a.date);
-        const dateB = new Date(b.type === 'event' ? (b.eventDate || b.date) : b.date);
-        return dateA - dateB;
-    });
-    
-    container.innerHTML = sortedEvents.map(event => {
-        let cardDate;
-        let isPast = false;
-        let daysUntil = 0;
-        
-        if (event.type === 'event') {
-            // For Event type, show the event date
-            cardDate = new Date(event.eventDate);
-        } else {
-            // For Sponsor/Event Deadline, show due date
-            cardDate = new Date(event.date);
-        }
-        
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        cardDate.setHours(0, 0, 0, 0);
-        daysUntil = Math.ceil((cardDate - today) / (1000 * 60 * 60 * 24));
-        isPast = daysUntil < 0;
-        
-        const day = cardDate.getDate();
-        const month = cardDate.toLocaleDateString('en-US', { month: 'short' });
-        
-        // Create urgency badge with emoji
-        let urgencyBadge = '';
-        let urgencyClass = '';
-        if (!isPast) {
-            if (daysUntil === 0) {
-                urgencyBadge = '<span class="urgency-badge urgency-today">🔴 TODAY!</span>';
-                urgencyClass = 'event-urgency-critical';
-            } else if (daysUntil === 1) {
-                urgencyBadge = '<span class="urgency-badge urgency-tomorrow">⚠️ TOMORROW</span>';
-                urgencyClass = 'event-urgency-critical';
-            } else if (daysUntil <= 3) {
-                urgencyBadge = `<span class="urgency-badge urgency-soon">⚠️ ${daysUntil} days left</span>`;
-                urgencyClass = 'event-urgency-warning';
-            } else if (daysUntil <= 7) {
-                urgencyBadge = `<span class="urgency-badge urgency-week">⏰ 1 week</span>`;
-                urgencyClass = 'event-urgency-caution';
-            }
-        }
-        
-        const priorityColor = event.priority === 'high' ? '🔴' : event.priority === 'medium' ? '🟠' : '⚫';
-        const priorityBadge = event.priority ? `<span class="priority-badge priority-${event.priority}">${priorityColor} ${event.priority.toUpperCase()}</span>` : '';
-        const daysText = isPast ? '<span style="color: var(--text-secondary);">✓ Passed</span>' : `<strong>${daysUntil}d</strong>`;
-        
-        let typeInfo = '';
-        if (event.type === 'sponsor') {
-            typeInfo = `<div class="event-subtitle">👤 Sponsor: ${escapeHtml(event.sponsor || 'Unnamed')}</div>`;
-        } else if (event.type === 'event-deadline') {
-            typeInfo = `<div class="event-subtitle">📍 Event: ${escapeHtml(event.eventName || 'Unnamed')}</div>`;
-        } else if (event.type === 'event') {
-            typeInfo = `<div class="event-subtitle">🎉 Event</div>`;
-            if (event.theme) {
-                typeInfo += `<div class="event-theme">🎨 Theme: ${escapeHtml(event.theme)}</div>`;
-            }
-        }
-        
-        const postInfo = event.postId && event.type !== 'event' ? `<div class="event-post-link"><small>📝 Post linked</small></div>` : '';
-        const imageDisplay = event.eventImage && event.type === 'event' ? `<img src="${event.eventImage}" alt="${escapeHtml(event.name)}" class="event-thumbnail">` : '';
-        
-        return `
-            <div class="event-card ${isPast ? 'event-past' : ''} ${urgencyClass} ${event.priority === 'high' ? 'event-priority-high' : event.priority === 'medium' ? 'event-priority-medium' : 'event-priority-low'}">
-                ${imageDisplay}
-                <div class="event-date-badge">
-                    <div class="event-countdown">${daysText}</div>
-                    <div class="event-date-month">${month} ${day}</div>
-                </div>
-                <div class="event-info">
-                    <div class="event-name">${escapeHtml(event.name)}</div>
-                    ${typeInfo}
-                    ${event.notes ? `<div class="event-notes"><small>📌 ${escapeHtml(event.notes)}</small></div>` : ''}
-                    ${postInfo}
-                </div>
-                <div class="event-actions">
-                    ${urgencyBadge}
-                    ${priorityBadge}
-                    <button type="button" class="btn-sm" onclick="openEventModal(${event.id})" title="Edit">✏️</button>
-                    <button type="button" class="btn-sm" onclick="deleteEvent(${event.id})" title="Delete">🗑️</button>
-                </div>
-            </div>
-        `;
-    }).join('');
+    updateUpcomingEvents();
 }
 
 
@@ -3342,5 +3497,11 @@ function renderNotesList() {
         </li>
     `).join('');
 }
+
+// ============================================
+// Calendar Rendering
+// ============================================
+
+// All calendar rendering functions removed - using simpler upcoming events system instead
 
 
