@@ -2769,6 +2769,40 @@ select:focus {
     font-size: 14px;
     margin-left: 8px;
 }
+
+.upcoming-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.upcoming-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.upcoming-action-btn {
+    padding: 6px 8px;
+    font-size: 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-dark);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.upcoming-action-btn:hover {
+    background: rgba(187, 245, 105, 0.12);
+    border-color: var(--primary-color);
+}
+
+.upcoming-action-btn.danger:hover {
+    background: rgba(239, 68, 68, 0.14);
+    border-color: var(--danger-color);
+    color: var(--danger-color);
+}
 .tag-filter-chips {
     display: flex;
     gap: 6px;

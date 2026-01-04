@@ -677,62 +677,14 @@
     <div id="event-modal" class="modal">
         <div class="modal-content">
             <button class="modal-close" onclick="closeEventModal()">&times;</button>
-            <h2 id="event-modal-title" class="modal-title">Add Deadline</h2>
-            
-            <div class="form-group">
-                <label for="deadline-type">Type</label>
-                <select id="deadline-type" onchange="updateDeadlineForm()">
-                    <option value="sponsor">Sponsor Deadline</option>
-                    <option value="event-deadline">Event Deadline</option>
-                    <option value="event">Scheduled Event</option>
-                </select>
-            </div>
+            <h2 id="event-modal-title" class="modal-title">Add Event</h2>
 
             <div class="form-group">
-                <label for="deadline-name">Name/Title *</label>
-                <input type="text" id="deadline-name" placeholder="e.g., Fashion Week Submission">
+                <label for="deadline-name">Event Name *</label>
+                <input type="text" id="deadline-name" placeholder="e.g., Fashion Week">
             </div>
 
-            <!-- Sponsor Deadline Fields -->
-            <div class="form-group deadline-sponsor-group" id="deadline-sponsor-group">
-                <label for="deadline-sponsor">Sponsors *</label>
-                <input type="text" id="deadline-sponsor" placeholder="Sponsor or store name" class="deadline-sponsor-field">
-            </div>
-
-            <div class="form-group deadline-sponsor-group" id="deadline-sponsor-image-group">
-                <label for="deadline-sponsor-image">Product/Advertisement Image (optional)</label>
-                <div id="sponsor-image-upload-zone" class="image-upload-zone" ondrop="handleDrop(event, 'deadline-sponsor-image')" ondragover="handleDragOver(event, 'sponsor-image-upload-zone')" ondragleave="handleDragLeave(event, 'sponsor-image-upload-zone')">
-                    <div class="upload-zone-content">
-                        <div class="upload-icon">📦</div>
-                        <div class="upload-text">Drop image here or click to select</div>
-                        <div class="upload-hint">Product photo or advertisement</div>
-                    </div>
-                    <input type="file" id="deadline-sponsor-image" accept="image/*" class="file-input-hidden" aria-label="Sponsor product image upload" title="Select sponsor product image">
-                </div>
-                <div id="sponsor-image-preview" class="image-preview"></div>
-            </div>
-
-            <!-- Event Deadline Fields -->
-            <div class="form-group deadline-event-deadline-group-hidden" id="deadline-event-deadline-group">
-                <label for="deadline-event-name">Event Name *</label>
-                <input type="text" id="deadline-event-name" placeholder="Event name">
-            </div>
-
-            <div class="form-group deadline-event-deadline-group-hidden" id="deadline-event-deadline-image-group">
-                <label for="deadline-event-deadline-image">Product/Advertisement Image (optional)</label>
-                <div id="event-deadline-image-upload-zone" class="image-upload-zone" ondrop="handleDrop(event, 'deadline-event-deadline-image')" ondragover="handleDragOver(event, 'event-deadline-image-upload-zone')" ondragleave="handleDragLeave(event, 'event-deadline-image-upload-zone')">
-                    <div class="upload-zone-content">
-                        <div class="upload-icon">📦</div>
-                        <div class="upload-text">Drop image here or click to select</div>
-                        <div class="upload-hint">Product photo or advertisement</div>
-                    </div>
-                    <input type="file" id="deadline-event-deadline-image" accept="image/*" class="file-input-hidden" aria-label="Event deadline product image upload" title="Select product image">
-                </div>
-                <div id="event-deadline-image-preview" class="image-preview"></div>
-            </div>
-
-            <!-- Scheduled Event Logging Fields -->
-            <div class="form-group deadline-event-info-group-hidden" id="deadline-event-info-group">
+            <div class="form-group" id="deadline-event-info-group">
                 <label for="deadline-event-start-date">Event Dates *</label>
                 <div class="date-range-row">
                     <input type="date" id="deadline-event-start-date">
@@ -742,13 +694,13 @@
                 <small>Leave end blank for single-day events.</small>
             </div>
 
-            <div class="form-group deadline-event-info-group-hidden" id="deadline-event-theme-group">
+            <div class="form-group" id="deadline-event-theme-group">
                 <label for="deadline-event-theme">Theme (optional)</label>
                 <input type="text" id="deadline-event-theme" placeholder="e.g., Winter Wonderland, Cyberpunk">
             </div>
 
-            <div class="form-group deadline-event-info-group-hidden" id="deadline-event-image-group">
-                <label for="deadline-event-image">Event Logo/Thumbnail or Advertisement (optional)</label>
+            <div class="form-group" id="deadline-event-image-group">
+                <label for="deadline-event-image">Advertisement / Event Image (optional)</label>
                 <div id="event-image-upload-zone" class="image-upload-zone" ondrop="handleDrop(event, 'deadline-event-image')" ondragover="handleDragOver(event, 'event-image-upload-zone')" ondragleave="handleDragLeave(event, 'event-image-upload-zone')">
                     <div class="upload-zone-content">
                         <div class="upload-icon">🖼️</div>
@@ -760,44 +712,14 @@
                 <div id="event-image-preview" class="image-preview"></div>
             </div>
 
-            <!-- Common Deadline Fields -->
-            <div class="form-group deadline-date-group" id="deadline-date-group">
-                <label for="deadline-start-date">Due Date *</label>
-                <div class="date-range-row">
-                    <input type="date" id="deadline-start-date">
-                    <span class="date-range-separator">to</span>
-                    <input type="date" id="deadline-end-date" aria-label="Due end date (optional)">
-                </div>
-                <small>Leave end blank for single-day deadlines.</small>
-            </div>
-
-            <div class="form-group">
-                <label for="deadline-priority">Priority</label>
-                <select id="deadline-priority">
-                    <option value="low">Low</option>
-                    <option value="medium" selected>Medium</option>
-                    <option value="high">High</option>
-                </select>
-            </div>
-
             <div class="form-group">
                 <label for="deadline-notes">Notes (optional)</label>
                 <textarea id="deadline-notes" rows="3" placeholder="Additional details or notes"></textarea>
             </div>
 
-            <div class="form-group deadline-post-group" id="deadline-post-group">
-                <label for="deadline-post-id">Link to Post (optional)</label>
-                <div class="deadline-post-row">
-                    <select id="deadline-post-id" class="flex-1">
-                        <option value="">None - Create new post instead</option>
-                    </select>
-                    <button type="button" class="btn-secondary btn-sm" onclick="createPostFromDeadline()">+ Create</button>
-                </div>
-            </div>
-
             <div class="modal-actions">
                 <button class="btn-secondary" onclick="closeEventModal()">Cancel</button>
-                <button class="btn-primary" onclick="saveDeadline()">Save Deadline</button>
+                <button class="btn-primary" onclick="saveDeadline()">Save Event</button>
             </div>
         </div>
     </div>

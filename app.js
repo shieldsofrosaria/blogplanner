@@ -132,16 +132,12 @@ function updateUpcomingEvents() {
     thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
 
     const upcoming = events.filter(event => {
-        const startStr = event.type === 'event'
-            ? (event.eventStartDate || event.eventDate || event.date)
-            : (event.startDate || event.date);
+        const startStr = event.eventStartDate || event.eventDate || event.date;
         const start = parseDateInput(startStr);
         return start && start >= today && start <= thirtyDaysFromNow;
     }).sort((a, b) => {
         const getDate = (ev) => {
-            const dateStr = ev.type === 'event'
-                ? (ev.eventStartDate || ev.eventDate || ev.date)
-                : (ev.startDate || ev.date);
+            const dateStr = ev.eventStartDate || ev.eventDate || ev.date;
             return parseDateInput(dateStr);
         };
         const dateA = getDate(a);
@@ -155,30 +151,41 @@ function updateUpcomingEvents() {
     }
 
     list.innerHTML = upcoming.map(event => {
-        const dateStr = event.type === 'event'
-            ? (event.eventStartDate || event.eventDate || event.date)
-            : (event.startDate || event.date);
+        const dateStr = event.eventStartDate || event.eventDate || event.date;
         const startDate = parseDateInput(dateStr);
         const daysAway = Math.ceil((startDate - today) / (1000 * 60 * 60 * 24));
         const dateLabel = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(startDate);
-        const typeIcon = event.type === 'sponsor' ? '👤' : event.type === 'event-deadline' ? '📋' : '🎉';
-        const priorityIcon = event.priority === 'high' ? '🔴' : event.priority === 'medium' ? '🟠' : '⚫';
+        const typeIcon = '🎉';
         const daysLabel = daysAway === 0 ? '🔥 Today!' : daysAway === 1 ? 'Tomorrow' : `In ${daysAway} days`;
-        const linked = event.postId && event.type !== 'event' ? ' 📝' : '';
         
         return `
             <div class="upcoming-event-item" onclick="openEventPreview(${event.id})" style="cursor:pointer;">
                 <div class="upcoming-event-left">
                     <span class="upcoming-icon">${typeIcon}</span>
                     <div class="upcoming-info">
-                        <div class="upcoming-title">${escapeHtml(event.name || 'Untitled')}${linked}</div>
+                        <div class="upcoming-title">${escapeHtml(event.name || 'Untitled')}</div>
                         <div class="upcoming-date">${dateLabel} • ${daysLabel}</div>
                     </div>
                 </div>
-                <span class="upcoming-priority">${priorityIcon}</span>
+                <div class="upcoming-right">
+                    <div class="upcoming-actions">
+                        <button class="upcoming-action-btn" title="Edit" onclick="event.stopPropagation(); editUpcomingEvent(${event.id});">✏️</button>
+                        <button class="upcoming-action-btn danger" title="Delete" onclick="event.stopPropagation(); deleteUpcomingEvent(${event.id});">🗑️</button>
+                    </div>
+                </div>
             </div>
         `;
     }).join('');
+}
+
+function editUpcomingEvent(eventId) {
+    openEventModal(eventId);
+}
+
+function deleteUpcomingEvent(eventId) {
+    if (confirm('Delete this event?')) {
+        deleteEvent(eventId);
+    }
 }
 
 function startSidebarClock() {
@@ -248,10 +255,6 @@ function setupImageUploadHandlers() {
     const inspirationZone = document.getElementById('inspiration-upload-zone');
     const eventImageInput = document.getElementById('deadline-event-image');
     const eventUploadZone = document.getElementById('event-image-upload-zone');
-    const sponsorImageInput = document.getElementById('deadline-sponsor-image');
-    const sponsorUploadZone = document.getElementById('sponsor-image-upload-zone');
-    const eventDeadlineImageInput = document.getElementById('deadline-event-deadline-image');
-    const eventDeadlineUploadZone = document.getElementById('event-deadline-image-upload-zone');
 
     if (blogUploadZone && blogImageInput) {
         blogUploadZone.addEventListener('click', () => blogImageInput.click());
@@ -261,12 +264,6 @@ function setupImageUploadHandlers() {
     }
     if (eventUploadZone && eventImageInput) {
         eventUploadZone.addEventListener('click', () => eventImageInput.click());
-    }
-    if (sponsorUploadZone && sponsorImageInput) {
-        sponsorUploadZone.addEventListener('click', () => sponsorImageInput.click());
-    }
-    if (eventDeadlineUploadZone && eventDeadlineImageInput) {
-        eventDeadlineUploadZone.addEventListener('click', () => eventDeadlineImageInput.click());
     }
 
     // Paste support scoped to upload zones
@@ -1519,7 +1516,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Event image handler (in deadline modal)
+    // Event image handler (in event modal)
     const eventImageInput = document.getElementById('deadline-event-image');
     if (eventImageInput) {
         eventImageInput.addEventListener('change', (e) => {
@@ -1529,38 +1526,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 reader.onload = (event) => {
                     const preview = document.getElementById('event-image-preview');
                     preview.innerHTML = `<img src="${event.target.result}" alt="Event image">`;
-                };
-                reader.readAsDataURL(file);
-            }
-        });
-    }
-
-    // Sponsor product image handler
-    const sponsorImageInput = document.getElementById('deadline-sponsor-image');
-    if (sponsorImageInput) {
-        sponsorImageInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file && file.type.startsWith('image/')) {
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    const preview = document.getElementById('sponsor-image-preview');
-                    preview.innerHTML = `<img src="${event.target.result}" alt="Sponsor product">`;
-                };
-                reader.readAsDataURL(file);
-            }
-        });
-    }
-
-    // Event deadline product image handler
-    const eventDeadlineImageInput = document.getElementById('deadline-event-deadline-image');
-    if (eventDeadlineImageInput) {
-        eventDeadlineImageInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file && file.type.startsWith('image/')) {
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    const preview = document.getElementById('event-deadline-image-preview');
-                    preview.innerHTML = `<img src="${event.target.result}" alt="Event deadline product">`;
                 };
                 reader.readAsDataURL(file);
             }
@@ -2852,38 +2817,7 @@ function inRange(target, start, end) {
     return t >= s && t <= e;
 }
 
-function updateDeadlineForm() {
-    const type = document.getElementById('deadline-type').value;
-    
-    // Hide all groups first
-    document.getElementById('deadline-sponsor-group').classList.add('deadline-event-group-hidden');
-    document.getElementById('deadline-sponsor-image-group').classList.add('deadline-event-group-hidden');
-    document.getElementById('deadline-event-deadline-group').classList.add('deadline-event-deadline-group-hidden');
-    document.getElementById('deadline-event-deadline-image-group').classList.add('deadline-event-deadline-group-hidden');
-    document.getElementById('deadline-event-info-group').classList.add('deadline-event-info-group-hidden');
-    document.getElementById('deadline-event-theme-group').classList.add('deadline-event-info-group-hidden');
-    document.getElementById('deadline-event-image-group').classList.add('deadline-event-info-group-hidden');
-    document.getElementById('deadline-date-group').classList.remove('deadline-event-group-hidden');
-    document.getElementById('deadline-post-group').classList.remove('deadline-event-group-hidden');
-    
-    // Show relevant groups based on type
-    if (type === 'sponsor') {
-        document.getElementById('deadline-sponsor-group').classList.remove('deadline-event-group-hidden');
-        document.getElementById('deadline-sponsor-image-group').classList.remove('deadline-event-group-hidden');
-        document.getElementById('deadline-date-group').classList.remove('deadline-event-group-hidden');
-    } else if (type === 'event-deadline') {
-        document.getElementById('deadline-event-deadline-group').classList.remove('deadline-event-deadline-group-hidden');
-        document.getElementById('deadline-event-deadline-image-group').classList.remove('deadline-event-deadline-group-hidden');
-        document.getElementById('deadline-date-group').classList.remove('deadline-event-group-hidden');
-    } else if (type === 'event') {
-        // Scheduled Event type doesn't have due date or post link (it's logging an event)
-        document.getElementById('deadline-event-info-group').classList.remove('deadline-event-info-group-hidden');
-        document.getElementById('deadline-event-theme-group').classList.remove('deadline-event-info-group-hidden');
-        document.getElementById('deadline-event-image-group').classList.remove('deadline-event-info-group-hidden');
-        document.getElementById('deadline-date-group').classList.add('deadline-event-group-hidden');
-        document.getElementById('deadline-post-group').classList.add('deadline-event-group-hidden');
-    }
-}
+
 
 function openEventModal(eventId = null, defaultStart = null, defaultEnd = null) {
     // Ensure preview is closed when opening the full modal
@@ -2893,103 +2827,32 @@ function openEventModal(eventId = null, defaultStart = null, defaultEnd = null) 
     const title = document.getElementById('event-modal-title');
     
     // Reset form
-    document.getElementById('deadline-type').value = 'sponsor';
     document.getElementById('deadline-name').value = '';
-    document.getElementById('deadline-sponsor').value = '';
-    document.getElementById('deadline-event-name').value = '';
-    document.getElementById('deadline-start-date').value = defaultStart || '';
-    document.getElementById('deadline-end-date').value = defaultEnd || '';
     document.getElementById('deadline-event-start-date').value = defaultStart || '';
     document.getElementById('deadline-event-end-date').value = defaultEnd || '';
     document.getElementById('deadline-event-theme').value = '';
-    document.getElementById('deadline-priority').value = 'medium';
     document.getElementById('deadline-notes').value = '';
-    document.getElementById('deadline-post-id').value = '';
     document.getElementById('event-image-preview').innerHTML = '';
-    document.getElementById('sponsor-image-preview').innerHTML = '';
-    document.getElementById('event-deadline-image-preview').innerHTML = '';
-    
-    updateDeadlineForm();
-    updatePostSelect();
     
     if (eventId) {
         const event = events.find(e => e.id === eventId);
         if (event) {
             title.textContent = 'Edit Event';
-            document.getElementById('deadline-type').value = event.type || 'sponsor';
-            document.getElementById('deadline-name').value = event.name;
-            document.getElementById('deadline-sponsor').value = event.sponsor || '';
-            document.getElementById('deadline-event-name').value = event.eventName || '';
-            document.getElementById('deadline-start-date').value = event.startDate || event.date || '';
-            document.getElementById('deadline-end-date').value = event.endDate || '';
-            document.getElementById('deadline-event-start-date').value = event.eventStartDate || event.eventDate || '';
+            document.getElementById('deadline-name').value = event.name || '';
+            document.getElementById('deadline-event-start-date').value = event.eventStartDate || event.eventDate || event.date || '';
             document.getElementById('deadline-event-end-date').value = event.eventEndDate || '';
             document.getElementById('deadline-event-theme').value = event.theme || '';
-            document.getElementById('deadline-priority').value = event.priority || 'medium';
             document.getElementById('deadline-notes').value = event.notes || '';
-            document.getElementById('deadline-post-id').value = event.postId || '';
             
             if (event.eventImage) {
-                document.getElementById('event-image-preview').innerHTML = `<img src="${event.eventImage}" alt="Event thumbnail">`;
+                document.getElementById('event-image-preview').innerHTML = `<img src="${event.eventImage}" alt="Event image">`;
             }
-            if (event.sponsorImage) {
-                document.getElementById('sponsor-image-preview').innerHTML = `<img src="${event.sponsorImage}" alt="Sponsor product">`;
-            }
-            if (event.eventDeadlineImage) {
-                document.getElementById('event-deadline-image-preview').innerHTML = `<img src="${event.eventDeadlineImage}" alt="Event deadline product">`;
-            }
-            updateDeadlineForm();
         }
     } else {
-        title.textContent = 'Add Event/Deadline';
+        title.textContent = 'Add Event';
     }
     
     modal.classList.add('active');
-}
-
-
-
-function updatePostSelect() {
-    const select = document.getElementById('deadline-post-id');
-    select.innerHTML = '<option value=\"\">None - Create new post instead</option>';
-    
-    posts.forEach(post => {
-        const option = document.createElement('option');
-        option.value = post.id;
-        option.textContent = post.title || 'Untitled Post';
-        select.appendChild(option);
-    });
-}
-
-function createPostFromDeadline() {
-    const name = document.getElementById('deadline-name').value.trim();
-    if (!name) {
-        showToast('Enter deadline name first', 'warning');
-        return;
-    }
-    
-    const newPost = {
-        id: Date.now(),
-        title: name,
-        scene: '',
-        concept: '',
-        tags: [],
-        caption: '',
-        sponsors: [],
-        avatars: [],
-        inspirationImages: [],
-        imageData: '',
-        hostedImageUrl: '',
-        blueskyLink: '',
-        sponsorMentions: '',
-        createdAt: new Date().toLocaleString()
-    };
-    
-    posts.push(newPost);
-    saveData();
-    updatePostSelect();
-    document.getElementById('deadline-post-id').value = newPost.id;
-    showToast(`📝 Post "${name}" created!`, 'success');
 }
 
 function closeEventModal() {
@@ -3006,7 +2869,11 @@ function openEventPreview(eventId) {
     if (modal) modal.classList.remove('active');
 
     const card = document.getElementById('event-preview-card');
-    const { start, end } = getEventRange(event);
+    const startStr = event.eventStartDate || event.eventDate || event.date;
+    const endStr = event.eventEndDate || '';
+    const start = parseDateInput(startStr);
+    const end = endStr ? parseDateInput(endStr) : null;
+    
     const dateLabel = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(start);
     const rangeLabel = end && end.getTime() !== start.getTime()
         ? ` - ${new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(end)}`
@@ -3014,30 +2881,19 @@ function openEventPreview(eventId) {
 
     document.getElementById('preview-title').textContent = event.name || 'Untitled';
     
-    const typeIcon = event.type === 'sponsor' ? '👤' : event.type === 'event-deadline' ? '📍' : '🎉';
-    const typeLabel = event.type === 'sponsor' ? 'Sponsor Deadline' : event.type === 'event-deadline' ? 'Event Deadline' : 'Scheduled Event';
-    const priorityColor = event.priority === 'high' ? '🔴' : event.priority === 'medium' ? '🟠' : '⚫';
+    const typeIcon = '🎉';
+    const typeLabel = 'Scheduled Event';
     
     document.getElementById('preview-type-badge').innerHTML = `${typeIcon} ${typeLabel}`;
-    document.getElementById('preview-priority-badge').innerHTML = `${priorityColor} ${event.priority.toUpperCase()}`;
 
     // Date
     document.getElementById('preview-date-text').textContent = dateLabel + rangeLabel;
 
     // Type-specific fields
-    const sponsorRow = document.getElementById('preview-sponsor-row');
     const themeRow = document.getElementById('preview-theme-row');
     const notesRow = document.getElementById('preview-notes-row');
-    const postRow = document.getElementById('preview-post-row');
 
-    if (event.type === 'sponsor' && event.sponsor) {
-        sponsorRow.style.display = '';
-        document.getElementById('preview-sponsor-text').textContent = event.sponsor;
-    } else {
-        sponsorRow.style.display = 'none';
-    }
-
-    if (event.type === 'event' && event.theme) {
+    if (event.theme) {
         themeRow.style.display = '';
         document.getElementById('preview-theme-text').textContent = event.theme;
     } else {
@@ -3051,19 +2907,10 @@ function openEventPreview(eventId) {
         notesRow.style.display = 'none';
     }
 
-    if (event.postId && event.type !== 'event') {
-        postRow.style.display = '';
-        const post = posts.find(p => p.id == event.postId);
-        document.getElementById('preview-post-text').textContent = post ? post.title || 'Linked Post' : 'Post';
-    } else {
-        postRow.style.display = 'none';
-    }
-
     // Image
     const imageEl = document.getElementById('preview-image');
-    const img = event.type === 'event' ? event.eventImage : event.type === 'event-deadline' ? event.eventDeadlineImage : event.sponsorImage;
-    if (img) {
-        imageEl.innerHTML = `<img src="${img}" alt="Event">`;
+    if (event.eventImage) {
+        imageEl.innerHTML = `<img src="${event.eventImage}" alt="Event">`;
         imageEl.style.display = '';
     } else {
         imageEl.style.display = 'none';
@@ -3092,104 +2939,34 @@ function deleteEventFromPreview() {
 }
 
 function saveDeadline() {
-    const type = document.getElementById('deadline-type').value;
     const name = document.getElementById('deadline-name').value.trim();
-    const priority = document.getElementById('deadline-priority').value;
+    const eventStartDate = document.getElementById('deadline-event-start-date').value;
+    const eventEndDate = document.getElementById('deadline-event-end-date').value;
+    const theme = document.getElementById('deadline-event-theme').value.trim();
     const notes = document.getElementById('deadline-notes').value.trim();
     
     if (!name) {
-        showToast('Please enter a name', 'error');
+        showToast('Please enter event name', 'error');
         return;
     }
     
-    let sponsor = '';
-    let sponsorImage = '';
-    let eventName = '';
-    let eventDeadlineImage = '';
-    let date = '';
-    let startDate = '';
-    let endDate = '';
-    let eventDate = '';
-    let eventStartDate = '';
-    let eventEndDate = '';
-    let theme = '';
-    let eventImage = '';
-    let postId = null;
+    if (!eventStartDate) {
+        showToast('Please enter event start date', 'error');
+        return;
+    }
     
-    if (type === 'sponsor') {
-        sponsor = document.getElementById('deadline-sponsor').value.trim();
-        startDate = document.getElementById('deadline-start-date').value;
-        endDate = document.getElementById('deadline-end-date').value;
-        date = startDate; // legacy compatibility
-        postId = document.getElementById('deadline-post-id').value || null;
-        
-        const sponsorImagePreview = document.getElementById('sponsor-image-preview');
-        if (sponsorImagePreview && sponsorImagePreview.querySelector('img')) {
-            sponsorImage = sponsorImagePreview.querySelector('img').src;
-        }
-        
-        if (!sponsor) {
-            showToast('Please enter sponsor name', 'error');
-            return;
-        }
-        if (!startDate) {
-            showToast('Please enter due date', 'error');
-            return;
-        }
-        const startObj = parseDateInput(startDate);
-        const endObj = parseDateInput(endDate);
-        if (endObj && endObj < startObj) {
-            showToast('End date cannot be before start date', 'error');
-            return;
-        }
-    } else if (type === 'event-deadline') {
-        eventName = document.getElementById('deadline-event-name').value.trim();
-        startDate = document.getElementById('deadline-start-date').value;
-        endDate = document.getElementById('deadline-end-date').value;
-        date = startDate; // legacy compatibility
-        postId = document.getElementById('deadline-post-id').value || null;
-        
-        const eventDeadlineImagePreview = document.getElementById('event-deadline-image-preview');
-        if (eventDeadlineImagePreview && eventDeadlineImagePreview.querySelector('img')) {
-            eventDeadlineImage = eventDeadlineImagePreview.querySelector('img').src;
-        }
-        
-        if (!eventName) {
-            showToast('Please enter event name', 'error');
-            return;
-        }
-        if (!startDate) {
-            showToast('Please enter due date', 'error');
-            return;
-        }
-        const startObj = parseDateInput(startDate);
-        const endObj = parseDateInput(endDate);
-        if (endObj && endObj < startObj) {
-            showToast('End date cannot be before start date', 'error');
-            return;
-        }
-    } else if (type === 'event') {
-        eventStartDate = document.getElementById('deadline-event-start-date').value;
-        eventEndDate = document.getElementById('deadline-event-end-date').value;
-        eventDate = eventStartDate; // legacy compatibility
-        theme = document.getElementById('deadline-event-theme').value.trim();
-        
-        if (!eventStartDate) {
-            showToast('Please enter event start date', 'error');
-            return;
-        }
-        const eventStartObj = parseDateInput(eventStartDate);
-        const eventEndObj = parseDateInput(eventEndDate);
-        if (eventEndObj && eventEndObj < eventStartObj) {
-            showToast('End date cannot be before start date', 'error');
-            return;
-        }
-        
-        // Get event image if uploaded
-        const imagePreview = document.getElementById('event-image-preview');
-        if (imagePreview && imagePreview.querySelector('img')) {
-            eventImage = imagePreview.querySelector('img').src;
-        }
+    const eventStartObj = parseDateInput(eventStartDate);
+    const eventEndObj = parseDateInput(eventEndDate);
+    if (eventEndObj && eventEndObj < eventStartObj) {
+        showToast('End date cannot be before start date', 'error');
+        return;
+    }
+    
+    // Get event image if uploaded
+    let eventImage = '';
+    const imagePreview = document.getElementById('event-image-preview');
+    if (imagePreview && imagePreview.querySelector('img')) {
+        eventImage = imagePreview.querySelector('img').src;
     }
     
     if (currentEventId) {
@@ -3198,51 +2975,35 @@ function saveDeadline() {
         if (index !== -1) {
             events[index] = {
                 ...events[index],
-                type,
+                type: 'event',
                 name,
-                priority,
                 notes,
-                sponsor,
-                sponsorImage,
-                eventName,
-                eventDeadlineImage,
-                date,
-                startDate,
-                endDate,
-                eventDate,
                 eventStartDate,
                 eventEndDate,
+                eventDate: eventStartDate,
+                date: eventStartDate,
                 theme,
-                eventImage,
-                postId
+                eventImage
             };
-            showToast('Updated!', 'success');
+            showToast('Event updated!', 'success');
         }
     } else {
         // Create new event
         const newEvent = {
             id: Date.now(),
-            type,
+            type: 'event',
             name,
-            priority,
             notes,
-            sponsor,
-            sponsorImage,
-            eventName,
-            eventDeadlineImage,
-            date,
-            startDate,
-            endDate,
-            eventDate,
             eventStartDate,
             eventEndDate,
+            eventDate: eventStartDate,
+            date: eventStartDate,
             theme,
             eventImage,
-            postId,
             createdAt: new Date().toLocaleString()
         };
         events.push(newEvent);
-        showToast('Added!', 'success');
+        showToast('Event added!', 'success');
     }
     
     saveData();
