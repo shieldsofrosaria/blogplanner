@@ -831,6 +831,14 @@ function addSponsor() {
         <input type="text" name="sponsor-store" aria-label="Sponsor store" placeholder="Creator/Store" class="sponsor-store" list="saved-stores">
         <input type="text" name="sponsor-item" aria-label="Sponsor item" placeholder="Item Name" class="sponsor-item">
         <input type="url" name="sponsor-link" aria-label="Sponsor store link" placeholder="Store Link (SL/MP)" class="sponsor-link" title="In-world landmark or Marketplace URL">
+        <div class="event-fields" style="display: none;">
+            <input type="text" name="sponsor-event" aria-label="Sponsor event" placeholder="Event Name" class="sponsor-event">
+            <input type="url" name="sponsor-event-link" aria-label="Sponsor event landmark" placeholder="Event Landmark" class="sponsor-event-link" title="Event in-world landmark">
+        </div>
+        <label class="event-toggle">
+            <input type="checkbox" class="event-checkbox" onchange="toggleEventFields(this)">
+            <span title="Show/hide event details">📅</span>
+        </label>
         <button type="button" class="btn-remove" onclick="removeCredit(this)">✕</button>
     `;
     
@@ -849,6 +857,14 @@ function addCredit() {
         <input type="text" name="credit-store" aria-label="Credit store" placeholder="Creator/Store" class="credit-store" list="saved-stores">
         <input type="text" name="credit-item" aria-label="Credit item" placeholder="Item Name" class="credit-item-name">
         <input type="url" name="credit-link" aria-label="Credit store link" placeholder="Store Link (SL/MP)" class="credit-link" title="In-world landmark or Marketplace URL">
+        <div class="event-fields" style="display: none;">
+            <input type="text" name="credit-event" aria-label="Credit event" placeholder="Event Name" class="credit-event">
+            <input type="url" name="credit-event-link" aria-label="Credit event landmark" placeholder="Event Landmark" class="credit-event-link" title="Event in-world landmark">
+        </div>
+        <label class="event-toggle">
+            <input type="checkbox" class="event-checkbox" onchange="toggleEventFields(this)">
+            <span title="Show/hide event details">📅</span>
+        </label>
         <button type="button" class="btn-remove" onclick="removeCredit(this)">✕</button>
     `;
     
@@ -1005,9 +1021,6 @@ function restoreDraft(draft) {
         storeInput.addEventListener('change', () => autofillStore(storeInput));
         sponsorsList.appendChild(row);
     });
-    if (!sponsorsList.innerHTML.trim()) {
-        addSponsor();
-    }
 
     const creditsList = document.getElementById('credits-list');
     creditsList.innerHTML = '';
@@ -1026,9 +1039,6 @@ function restoreDraft(draft) {
         storeInput.addEventListener('change', () => autofillStore(storeInput));
         creditsList.appendChild(row);
     });
-    if (!creditsList.innerHTML.trim()) {
-        addCredit();
-    }
 
     const avatarsList = document.getElementById('avatars-list');
     avatarsList.innerHTML = '';
@@ -1391,34 +1401,16 @@ function clearForm() {
     // Reset notes
     renderNotesList();
     
-    // Reset sponsors
+    // Reset sponsors (leave empty until user adds)
     const sponsorsList = document.getElementById('sponsors-list');
     if (sponsorsList) {
-        sponsorsList.innerHTML = `
-            <div class="sponsor-row">
-                <input type="text" name="sponsor-store" aria-label="Sponsor store" placeholder="Creator/Store" class="sponsor-store" list="saved-stores">
-                <input type="text" name="sponsor-item" aria-label="Sponsor item" placeholder="Item Name" class="sponsor-item">
-                <input type="url" name="sponsor-link" aria-label="Sponsor store link" placeholder="Store Link (SL/MP)" class="sponsor-link" title="In-world landmark or Marketplace URL">
-                <input type="text" name="sponsor-event" aria-label="Sponsor event" placeholder="Event Name" class="sponsor-event">
-                <input type="url" name="sponsor-event-link" aria-label="Sponsor event landmark" placeholder="Event Landmark" class="sponsor-event-link" title="Event in-world landmark">
-                <button type="button" class="btn-remove" onclick="removeCredit(this)">✕</button>
-            </div>
-        `;
+        sponsorsList.innerHTML = '';
     }
     
-    // Reset credits
+    // Reset credits (leave empty until user adds)
     const creditsList = document.getElementById('credits-list');
     if (creditsList) {
-        creditsList.innerHTML = `
-            <div class="credit-row">
-                <input type="text" name="credit-store" aria-label="Credit store" placeholder="Creator/store" class="credit-store" list="saved-stores">
-                <input type="text" name="credit-item" aria-label="Credit item" placeholder="Item name" class="credit-item-name">
-                <input type="url" name="credit-link" aria-label="Credit store link" placeholder="Store link (SL/MP)" class="credit-link" title="In-world landmark or Marketplace URL">
-                <input type="text" name="credit-event" aria-label="Credit event" placeholder="Event Name" class="credit-event">
-                <input type="url" name="credit-event-link" aria-label="Credit event landmark" placeholder="Event Landmark" class="credit-event-link" title="Event in-world landmark">
-                <button type="button" class="btn-remove" onclick="removeCredit(this)">✕</button>
-            </div>
-        `;
+        creditsList.innerHTML = '';
     }
     
     const imagePreview = document.getElementById('image-preview');

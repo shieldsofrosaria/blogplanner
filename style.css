@@ -870,6 +870,11 @@ input[type="file"] {
     overflow-y: visible;
 }
 
+#sponsors-list:empty,
+#credits-list:empty {
+    display: none;
+}
+
 #sponsors-list .sponsor-row,
 #credits-list .credit-row {
     display: grid;
@@ -1041,6 +1046,45 @@ input[type="file"] {
     overflow: hidden;
     border: none;
     margin: 0;
+}
+
+.credits-container {
+    max-height: 2000px;
+    opacity: 1;
+    overflow: visible;
+    transition: max-height 0.3s ease, opacity 0.3s ease;
+}
+
+.credits-container.collapsed-section {
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    margin: 0;
+}
+
+.collapsible-header-inline {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+}
+
+.btn-collapse {
+    padding: 6px 14px;
+    background: var(--bg-dark);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.btn-collapse:hover {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    color: var(--bg-dark);
 }
 
 .avatar-parts-header {

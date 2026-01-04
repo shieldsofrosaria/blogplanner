@@ -204,133 +204,23 @@
                         <div class="section-heading">💚 Sponsors</div>
                         <p class="info-text">Add items you received as sponsors (gifts from creators/stores).</p>
                         
-                        <div id="sponsors-list" class="credits-list">
-                            <div class="sponsor-row">
-                                <input type="text" name="sponsor-store" aria-label="Sponsor store" placeholder="Creator/Store" class="sponsor-store" list="saved-stores">
-                                <input type="text" name="sponsor-item" aria-label="Sponsor item" placeholder="Item Name" class="sponsor-item">
-                                <input type="url" name="sponsor-link" aria-label="Sponsor store link" placeholder="Store Link (SL/MP)" class="sponsor-link" title="In-world landmark or Marketplace URL">
-                                <button type="button" class="btn-remove" onclick="removeCredit(this)">✕</button>
-                            </div>
-                        </div>
+                        <div id="sponsors-list" class="credits-list"></div>
                         <datalist id="saved-stores"></datalist>
                         <button type="button" class="btn-secondary" onclick="addSponsor()">+ Add Sponsor</button>
-                    </fieldset>
-
-                    <fieldset class="form-section">
-                        <div class="section-heading">🐺 Avatar Details</div>
-                        <p class="info-text">Track creator/store info for each avatar part. All fields optional.</p>
-                        
-                        <div id="avatars-list" class="avatars-container">
-                            <div class="avatar-card">
-                                <div class="avatar-card-header">
-                                    <input type="text" name="avatar-name" aria-label="Avatar name" placeholder="Avatar Name or Nickname" class="avatar-name" oninput="toggleAvatarDetails(this)">
-                                    <button type="button" class="btn-remove" onclick="removeAvatar(this)">✕</button>
-                                </div>
-                                
-                                <div class="avatar-parts-table collapsed-section">
-                                    <div class="avatar-parts-header">
-                                        <div class="col-part">Part</div>
-                                        <div class="col-creator">Creator/Mod</div>
-                                        <div class="col-link">Store Link</div>
-                                    </div>
-                                    
-                                    <div class="avatar-part-row">
-                                        <div class="col-part"><span class="part-label">Mod/Skin</span></div>
-                                        <input type="text" name="avatar-mod-creator" aria-label="Mod/Skin creator" placeholder="Creator or mod name" class="col-creator">
-                                        <input type="text" name="avatar-mod-link" aria-label="Mod/Skin store link" placeholder="Store link or SLurl" class="col-link">
-                                    </div>
-                                    
-                                    <div class="avatar-part-row">
-                                        <div class="col-part"><span class="part-label">Body</span></div>
-                                        <input type="text" name="avatar-body-creator" aria-label="Body creator" placeholder="Creator or mod name" class="col-creator">
-                                        <input type="text" name="avatar-body-link" aria-label="Body store link" placeholder="Store link or SLurl" class="col-link">
-                                    </div>
-                                    
-                                    <div class="avatar-part-row">
-                                        <div class="col-part"><span class="part-label">Head</span></div>
-                                        <input type="text" name="avatar-head-creator" aria-label="Head creator" placeholder="Creator or mod name" class="col-creator">
-                                        <input type="text" name="avatar-head-link" aria-label="Head store link" placeholder="Store link or SLurl" class="col-link">
-                                    </div>
-                                    
-                                    <div class="avatar-part-row">
-                                        <div class="col-part"><span class="part-label">Hands</span></div>
-                                        <input type="text" name="avatar-hands-creator" aria-label="Hands creator" placeholder="Creator or mod name" class="col-creator">
-                                        <input type="text" name="avatar-hands-link" aria-label="Hands store link" placeholder="Store link or SLurl" class="col-link">
-                                    </div>
-                                    
-                                    <div class="avatar-part-row">
-                                        <div class="col-part"><span class="part-label">Feet</span></div>
-                                        <input type="text" name="avatar-feet-creator" aria-label="Feet creator" placeholder="Creator or mod name" class="col-creator">
-                                        <input type="text" name="avatar-feet-link" aria-label="Feet store link" placeholder="Store link or SLurl" class="col-link">
-                                    </div>
-                                    
-                                    <div class="avatar-part-row">
-                                        <div class="col-part"><span class="part-label">Tail</span></div>
-                                        <input type="text" name="avatar-tail-creator" aria-label="Tail creator" placeholder="Creator or mod name" class="col-creator">
-                                        <input type="text" name="avatar-tail-link" aria-label="Tail store link" placeholder="Store link or SLurl" class="col-link">
-                                    </div>
-                                    
-                                    <div class="avatar-part-row">
-                                        <div class="col-part"><span class="part-label">Ears</span></div>
-                                        <input type="text" name="avatar-ears-creator" aria-label="Ears creator" placeholder="Creator or mod name" class="col-creator">
-                                        <input type="text" name="avatar-ears-link" aria-label="Ears store link" placeholder="Store link or SLurl" class="col-link">
-                                    </div>
-                                    
-                                    <div class="avatar-part-row">
-                                        <div class="col-part"><span class="part-label">Eyes</span></div>
-                                        <input type="text" name="avatar-eyes-creator" aria-label="Eyes creator" placeholder="Creator or mod name" class="col-creator">
-                                        <input type="text" name="avatar-eyes-link" aria-label="Eyes store link" placeholder="Store link or SLurl" class="col-link">
-                                    </div>
-                                    
-                                    <div class="avatar-part-row">
-                                        <div class="col-part"><span class="part-label">Hair</span></div>
-                                        <input type="text" name="avatar-hair-creator" aria-label="Hair creator" placeholder="Creator or mod name" class="col-creator">
-                                        <input type="text" name="avatar-hair-link" aria-label="Hair store link" placeholder="Store link or SLurl" class="col-link">
-                                    </div>
-                                    
-                                    <div class="avatar-part-row">
-                                        <div class="col-part"><span class="part-label">Nails/Claws</span></div>
-                                        <input type="text" name="avatar-nails-creator" aria-label="Nails/Claws creator" placeholder="Creator or mod name" class="col-creator">
-                                        <input type="text" name="avatar-nails-link" aria-label="Nails/Claws store link" placeholder="Store link or SLurl" class="col-link">
-                                    </div>
-                                </div>
-                                
-                                <div class="avatar-cosmetics-section">
-                                    <label for="avatar-cosmetics">Additional Cosmetics</label>
-                                    <textarea id="avatar-cosmetics" name="avatar-cosmetics" aria-label="Cosmetics" placeholder="List extra items (jewelry, tattoos, accessories) — one per line" class="avatar-cosmetics" rows="2"></textarea>
-                                </div>
-                            </div>
-                        </div>
-                        <button type="button" class="btn-secondary" onclick="addAvatar()">+ Add Avatar</button>
                     </fieldset>
 
                     <fieldset class="form-section">
                         <div class="section-heading">✨ Credits</div>
                         <p class="info-text">Add items you purchased or used (avatar, outfit, props, etc).</p>
 
-                        <div id="credits-list" class="credits-list">
-                            <div class="credit-row">
-                                <input type="text" name="credit-store" aria-label="Credit store" placeholder="Creator/Store" class="credit-store" list="saved-stores">
-                                <input type="text" name="credit-item" aria-label="Credit item" placeholder="Item Name" class="credit-item-name">
-                                <input type="url" name="credit-link" aria-label="Credit store link" placeholder="Store Link (SL/MP)" class="credit-link" title="In-world landmark or Marketplace URL">
-                                <div class="event-fields">
-                                    <input type="text" name="credit-event" aria-label="Credit event" placeholder="Event Name" class="credit-event">
-                                    <input type="url" name="credit-event-link" aria-label="Credit event landmark" placeholder="Event Landmark" class="credit-event-link" title="Event in-world landmark">
-                                </div>
-                                <label class="event-toggle">
-                                    <input type="checkbox" class="event-checkbox" onchange="toggleEventFields(this)">
-                                    <span title="Show/hide event details">📅</span>
-                                </label>
-                                <button type="button" class="btn-remove" onclick="removeCredit(this)">✕</button>
-                            </div>
-                        </div>
+                        <div id="credits-list" class="credits-list"></div>
                         <button type="button" class="btn-secondary" onclick="addCredit()">+ Add Credit</button>
-                    
-                        <div class="form-actions">
-                            <button type="button" class="btn-primary" onclick="savePost()">💾 Save Post</button>
-                            <button type="button" class="btn-danger" onclick="clearForm()">🗑️ Clear</button>
-                        </div>
                     </fieldset>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn-primary" onclick="savePost()">💾 Save Post</button>
+                        <button type="button" class="btn-danger" onclick="clearForm()">🗑️ Clear</button>
+                    </div>
                     </div>
 
                     <!-- Step 4: Export (inline) -->
