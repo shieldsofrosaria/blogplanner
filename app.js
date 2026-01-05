@@ -25,13 +25,14 @@ let currentPost = null;
 let currentPlatform = 'flickr';
 let inspirationImages = [];
 let currentWizardStep = 1;
-const totalWizardSteps = 4;
+const totalWizardSteps = 3;
 let savedLibrary = { stores: [] }; // Saved creators/stores library
 let libraryFilter = '';
 let libraryEditTarget = null;
 const draftKey = 'blogplanner-draft';
 let autosaveTimer = null;
 let currentEventId = null; // For editing events
+const MAX_INLINE_IMAGE_SIZE = 280000; // ~280 KB cap per inline data URL
 const sectionTitles = {
     'dashboard': '📊 Dashboard',
     'new-post': '➕ New Post',
@@ -39,6 +40,71 @@ const sectionTitles = {
     'creator-library': '📚 Creator Directory',
     'settings': '⚙️ Settings'
 };
+
+// ============================================
+// Image Helpers
+// ============================================
+
+function isQuotaExceededError(error) {
+    return error && (error.name === 'QuotaExceededError' || error.code === 22 || error.code === 1014);
+}
+
+function compactInlineImage(dataUrl, stripAll = false) {
+    if (stripAll) return '';
+    if (!dataUrl) return '';
+    return dataUrl.length > MAX_INLINE_IMAGE_SIZE ? '' : dataUrl;
+}
+
+function compactPostForStorage(post, stripAllInlineImages = false) {
+    const compacted = { ...post };
+    compacted.imageData = compactInlineImage(compacted.imageData, stripAllInlineImages);
+    if (Array.isArray(compacted.inspirationImages)) {
+        compacted.inspirationImages = compacted.inspirationImages
+            .map(img => compactInlineImage(img, stripAllInlineImages))
+            .filter(Boolean);
+    } else {
+        delete compacted.inspirationImages;
+    }
+    return compacted;
+}
+
+function getStorageReadyPosts(stripAllInlineImages = false, mutateInMemory = true) {
+    const compacted = posts.map(post => compactPostForStorage(post, stripAllInlineImages));
+    if (mutateInMemory) {
+        posts = compacted;
+    }
+    return compacted;
+}
+
+async function compressImageFile(file, options = {}) {
+    const { maxDimension = 1000, quality = 0.72 } = options;
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error('Image read failed'));
+        reader.onload = () => {
+            const img = new Image();
+            img.onload = () => {
+                let { width, height } = img;
+                if (width > maxDimension || height > maxDimension) {
+                    const scale = Math.min(maxDimension / width, maxDimension / height);
+                    width = Math.round(width * scale);
+                    height = Math.round(height * scale);
+                }
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                const mimeType = file.type && file.type.startsWith('image/') ? file.type : 'image/jpeg';
+                const dataUrl = canvas.toDataURL(mimeType, quality);
+                resolve(dataUrl);
+            };
+            img.onerror = () => reject(new Error('Image load failed'));
+            img.src = reader.result;
+        };
+        reader.readAsDataURL(file);
+    });
+}
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', () => {
@@ -55,7 +121,6 @@ document.addEventListener('DOMContentLoaded', () => {
     updateHashtagButtons();
     updateExportPresetDropdown();
     startSidebarClock();
-    setupNotesList();
     updateUpcomingEvents();
     showToast('Blog Planner loaded!', 'success');
     switchSection('dashboard'); // Start on dashboard
@@ -251,16 +316,11 @@ function assignFilesToInput(inputId, files) {
 function setupImageUploadHandlers() {
     const blogImageInput = document.getElementById('blog-image');
     const blogUploadZone = document.getElementById('image-upload-zone');
-    const inspirationInput = document.getElementById('inspiration-images');
-    const inspirationZone = document.getElementById('inspiration-upload-zone');
     const eventImageInput = document.getElementById('deadline-event-image');
     const eventUploadZone = document.getElementById('event-image-upload-zone');
 
     if (blogUploadZone && blogImageInput) {
         blogUploadZone.addEventListener('click', () => blogImageInput.click());
-    }
-    if (inspirationZone && inspirationInput) {
-        inspirationZone.addEventListener('click', () => inspirationInput.click());
     }
     if (eventUploadZone && eventImageInput) {
         eventUploadZone.addEventListener('click', () => eventImageInput.click());
@@ -268,8 +328,7 @@ function setupImageUploadHandlers() {
 
     // Paste support scoped to upload zones
     [
-        { input: blogImageInput, zone: blogUploadZone, zoneId: 'image-upload-zone', inputId: 'blog-image' },
-        { input: inspirationInput, zone: inspirationZone, zoneId: 'inspiration-upload-zone', inputId: 'inspiration-images' }
+        { input: blogImageInput, zone: blogUploadZone, zoneId: 'image-upload-zone', inputId: 'blog-image' }
     ].forEach(({ input, zone, inputId }) => {
         if (!zone || !input) return;
         zone.addEventListener('paste', (e) => {
@@ -978,23 +1037,10 @@ function restoreDraft(draft) {
     };
 
     setElementValue('post-title', draft.title);
-    setElementValue('post-scene', draft.scene);
-    setElementValue('post-concept', draft.concept);
     setElementValue('post-tags', (draft.tags || []).join(', '));
     setElementValue('post-caption', draft.caption);
     setElementValue('bluesky-link', draft.blueskyLink);
     setElementValue('sponsor-mentions', draft.sponsorMentions);
-
-    inspirationImages = draft.inspirationImages || [];
-    const gallery = document.getElementById('inspiration-gallery');
-    if (gallery) {
-        gallery.innerHTML = inspirationImages.map((img, i) => `
-            <div class="inspiration-item">
-                <img src="${img}" alt="Inspiration ${i + 1}">
-                <button type="button" class="remove-inspiration" onclick="removeInspirationImage(${i})">✕</button>
-            </div>
-        `).join('');
-    }
 
     if (draft.imageData) {
         document.getElementById('image-preview').innerHTML = `<img src="${draft.imageData}" alt="Blog image preview">`;
@@ -1292,10 +1338,7 @@ function getFormData() {
     return {
         id: Date.now(),
         title: document.getElementById('post-title').value,
-        scene: document.getElementById('post-scene').value,
-        notes: currentPost?.notes || [],
         tags: document.getElementById('post-tags').value.split(',').map(t => t.trim()).filter(t => t),
-        inspirationImages: inspirationImages,
         image: document.getElementById('blog-image').value,
         imageData: document.getElementById('image-preview').querySelector('img')?.src,
         hostedImageUrl: document.getElementById('hosted-image-url')?.value || '',
@@ -1386,20 +1429,13 @@ function clearForm() {
     };
     
     safeSet('post-title', '');
-    safeSet('post-scene', '');
-    safeSet('notes-input', '');
     safeSet('post-tags', '');
     safeSet('blog-image', '');
-    safeSet('inspiration-images', '');
     safeSet('post-caption', '');
     safeSet('bluesky-link', '');
     safeSet('sponsor-mentions', '');
     
-    inspirationImages = [];
-    currentPost = { notes: [] };
-    
-    // Reset notes
-    renderNotesList();
+    currentPost = {};
     
     // Reset sponsors (leave empty until user adds)
     const sponsorsList = document.getElementById('sponsors-list');
@@ -1415,9 +1451,6 @@ function clearForm() {
     
     const imagePreview = document.getElementById('image-preview');
     if (imagePreview) imagePreview.innerHTML = '';
-    
-    const inspirationGallery = document.getElementById('inspiration-gallery');
-    if (inspirationGallery) inspirationGallery.innerHTML = '';
     
     const imageUrlContainer = document.getElementById('image-url-container');
     if (imageUrlContainer) imageUrlContainer.classList.add('hidden');
@@ -1474,13 +1507,14 @@ document.addEventListener('DOMContentLoaded', () => {
         imageInput.addEventListener('change', async (e) => {
             const file = e.target.files[0];
             if (file) {
-                // Show preview
-                const reader = new FileReader();
-                reader.onload = (event) => {
+                // Show preview with compression to keep storage small
+                try {
+                    const compressed = await compressImageFile(file, { maxDimension: 1000, quality: 0.72 });
                     const preview = document.getElementById('image-preview');
-                    preview.innerHTML = `<img src="${event.target.result}" alt="Blog image preview">`;
-                };
-                reader.readAsDataURL(file);
+                    preview.innerHTML = `<img src="${compressed}" alt="Blog image preview">`;
+                } catch (err) {
+                    console.error('Image preview failed', err);
+                }
 
                 // Upload to ImgBB if API key is available
                 if (settings.imgbbKey) {
@@ -1525,56 +1559,64 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-function renderInspirationFiles(files) {
+async function renderInspirationFiles(files) {
     if (!files || !files.length) return;
     const gallery = document.getElementById('inspiration-gallery');
-    const startIndex = inspirationImages.length;
+    if (!gallery) return;
 
-    files.forEach((file, fileIndex) => {
-        const reader = new FileReader();
-        reader.onload = async (event) => {
-            inspirationImages.push(event.target.result);
-            const actualIndex = startIndex + fileIndex;
+    for (const file of files) {
+        try {
+            const previewData = await compressImageFile(file, { maxDimension: 1000, quality: 0.72 });
+            inspirationImages.push(previewData);
+            const index = inspirationImages.length - 1;
+
             const item = document.createElement('div');
             item.className = 'inspiration-item';
             item.innerHTML = `
-                <img src="${event.target.result}" alt="Inspiration ${actualIndex + 1}">
-                <div class="inspiration-status">⏳ Uploading...</div>
-                <button type="button" class="remove-inspiration" onclick="removeInspirationImage(${actualIndex})">✕</button>
+                <img src="${previewData}" alt="Inspiration ${index + 1}">
+                <div class="inspiration-status">${settings.imgbbKey ? '⏳ Uploading...' : '⚠️ No ImgBB key'}</div>
+                <button type="button" class="remove-inspiration" onclick="removeInspirationImage(${index})">✕</button>
             `;
             gallery.appendChild(item);
-            
-            // Upload to ImgBB if API key is available
+
             if (settings.imgbbKey) {
                 const imageUrl = await uploadToImgBB(file);
                 const statusDiv = item.querySelector('.inspiration-status');
-                if (imageUrl) {
-                    statusDiv.textContent = '✅ Uploaded';
-                    statusDiv.style.color = '#22c55e';
-                } else {
-                    statusDiv.textContent = '⚠️ Upload failed';
-                    statusDiv.style.color = '#ef4444';
+                if (statusDiv) {
+                    if (imageUrl) {
+                        statusDiv.textContent = '✅ Uploaded';
+                        statusDiv.style.color = '#22c55e';
+                    } else {
+                        statusDiv.textContent = '⚠️ Upload failed';
+                        statusDiv.style.color = '#ef4444';
+                    }
                 }
             } else {
                 const statusDiv = item.querySelector('.inspiration-status');
-                statusDiv.textContent = '⚠️ No ImgBB key';
-                statusDiv.style.color = '#f59e0b';
+                if (statusDiv) {
+                    statusDiv.style.color = '#f59e0b';
+                }
             }
-        };
-        reader.readAsDataURL(file);
-    });
+        } catch (err) {
+            console.error('Inspiration image failed', err);
+        }
+    }
     scheduleDraftSave();
 }
 
 function removeInspirationImage(index) {
     inspirationImages.splice(index, 1);
-    document.getElementById('inspiration-images').value = '';
-    document.getElementById('inspiration-gallery').innerHTML = inspirationImages.map((img, i) => `
-        <div class="inspiration-item">
-            <img src="${img}" alt="Inspiration ${i + 1}">
-            <button type="button" class="remove-inspiration" onclick="removeInspirationImage(${i})">✕</button>
-        </div>
-    `).join('');
+    const input = document.getElementById('inspiration-images');
+    if (input) input.value = '';
+    const gallery = document.getElementById('inspiration-gallery');
+    if (gallery) {
+        gallery.innerHTML = inspirationImages.map((img, i) => `
+            <div class="inspiration-item">
+                <img src="${img}" alt="Inspiration ${i + 1}">
+                <button type="button" class="remove-inspiration" onclick="removeInspirationImage(${i})">✕</button>
+            </div>
+        `).join('');
+    }
     scheduleDraftSave();
 }
 
@@ -1664,6 +1706,7 @@ function saveDraft() {
     const draft = getFormData();
     draft.id = null;
     draft.createdAt = null;
+    draft.imageData = compactInlineImage(draft.imageData);
     localStorage.setItem(draftKey, JSON.stringify(draft));
     console.log('Draft saved');
 }
@@ -2222,7 +2265,7 @@ function editPost(id) {
     const post = posts.find(p => p.id === id);
     if (!post) return;
     
-    currentPost = { notes: post.notes || [] };
+    currentPost = {};
     currentEditingPostId = id;
     
     // Switch to new-post section first
@@ -2238,7 +2281,6 @@ function editPost(id) {
         
         // Load post data into form
         safeSet('post-title', post.title || '');
-        safeSet('post-scene', post.scene || '');
         safeSet('post-tags', (post.tags || []).join(', '));
         safeSet('post-caption', post.caption || '');
         safeSet('bluesky-link', post.blueskyLink || '');
@@ -2257,22 +2299,7 @@ function editPost(id) {
             if (containerEl) containerEl.classList.remove('hidden');
         }
 
-        // Load inspiration images
-        if (post.inspirationImages && post.inspirationImages.length > 0) {
-            inspirationImages = post.inspirationImages;
-            const gallery = document.getElementById('inspiration-gallery');
-            if (gallery) {
-                gallery.innerHTML = post.inspirationImages.map((img, i) => `
-                    <div class="inspiration-item">
-                        <img src="${img}" alt="Inspiration ${i + 1}">
-                        <button type="button" class="remove-inspiration" onclick="removeInspirationImage(${i})">✕</button>
-                    </div>
-                `).join('');
-            }
-        }
-        
-        // Render notes
-        renderNotesList();
+        // No inspiration images or notes in the streamlined flow
         
         // Sponsors
         const sponsorsList = document.getElementById('sponsors-list');
@@ -2641,7 +2668,13 @@ function loadDataInit() {
     const savedEvents = localStorage.getItem('blogplanner-events');
     
     if (savedPosts) {
-        posts = JSON.parse(savedPosts);
+        posts = JSON.parse(savedPosts).map(p => {
+            const compacted = compactPostForStorage(p);
+            delete compacted.inspirationImages;
+            delete compacted.notes;
+            delete compacted.scene;
+            return compacted;
+        });
         console.log('Loaded posts:', posts.length);
     }
     
@@ -3079,12 +3112,27 @@ function setupKeyboardShortcuts() {
 
 function saveData() {
     try {
-        localStorage.setItem('blogplanner-posts', JSON.stringify(posts));
+        const compactedPosts = getStorageReadyPosts();
+        localStorage.setItem('blogplanner-posts', JSON.stringify(compactedPosts));
         localStorage.setItem('blogplanner-settings', JSON.stringify(settings));
         localStorage.setItem('blogplanner-events', JSON.stringify(events));
         localStorage.setItem('blogplanner-library', JSON.stringify(savedLibrary));
     } catch (e) {
-        showToast('Error saving data: ' + e.message, 'error');
+        if (isQuotaExceededError(e)) {
+            try {
+                const strippedPosts = getStorageReadyPosts(true);
+                localStorage.setItem('blogplanner-posts', JSON.stringify(strippedPosts));
+                localStorage.setItem('blogplanner-settings', JSON.stringify(settings));
+                localStorage.setItem('blogplanner-events', JSON.stringify(events));
+                localStorage.setItem('blogplanner-library', JSON.stringify(savedLibrary));
+                showToast('Storage nearly full: saved without inline image previews.', 'error');
+            } catch (inner) {
+                console.error('Quota fallback failed', inner);
+                showToast('Error saving data: storage is full. Consider deleting older posts.', 'error');
+            }
+        } else {
+            showToast('Error saving data: ' + e.message, 'error');
+        }
     }
 }
 
@@ -3098,7 +3146,7 @@ function createBackup() {
     try {
         const backupData = {
             timestamp: new Date().toISOString(),
-            posts: posts,
+            posts: getStorageReadyPosts(false, false),
             settings: settings,
             events: events,
             library: savedLibrary
@@ -3179,76 +3227,6 @@ function loadData() {
 
 function goToDashboard() {
     switchSection('dashboard');
-}
-
-// ============================================
-// Notes List Editor
-// ============================================
-
-function setupNotesList() {
-    const notesInput = document.getElementById('notes-input');
-    if (!notesInput) return;
-
-    notesInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            addNote();
-        }
-    });
-
-    renderNotesList();
-}
-
-function loadNotes() {
-    if (!currentPost) return [];
-    return currentPost.notes || [];
-}
-
-function saveNotes(notes) {
-    if (currentPost) {
-        currentPost.notes = notes;
-    }
-}
-
-function addNote() {
-    const input = document.getElementById('notes-input');
-    if (!input || !input.value.trim()) return;
-
-    if (!currentPost) {
-        currentPost = { notes: [] };
-    }
-    if (!currentPost.notes) {
-        currentPost.notes = [];
-    }
-
-    currentPost.notes.push(input.value.trim());
-    input.value = '';
-    renderNotesList();
-}
-
-function deleteNote(index) {
-    if (!currentPost || !currentPost.notes) return;
-    currentPost.notes.splice(index, 1);
-    renderNotesList();
-}
-
-function renderNotesList() {
-    const notesList = document.getElementById('notes-list');
-    if (!notesList) return;
-
-    const notes = currentPost?.notes || [];
-
-    if (notes.length === 0) {
-        notesList.innerHTML = '';
-        return;
-    }
-
-    notesList.innerHTML = notes.map((note, index) => `
-        <li class="note-item">
-            <span class="note-text">${escapeHtml(note)}</span>
-            <button type="button" class="note-delete" onclick="deleteNote(${index})" title="Delete note">✕</button>
-        </li>
-    `).join('');
 }
 
 // ============================================

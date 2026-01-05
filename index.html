@@ -80,54 +80,20 @@
                     <div class="wizard-progress">
                         <div class="wizard-step active" data-step="1">
                             <div class="step-number">1</div>
-                            <div class="step-label">🌅 Plan</div>
+                            <div class="step-label">📸 Content</div>
                         </div>
                         <div class="wizard-step" data-step="2">
                             <div class="step-number">2</div>
-                            <div class="step-label">📸 Content</div>
+                            <div class="step-label">💚 Credits</div>
                         </div>
                         <div class="wizard-step" data-step="3">
                             <div class="step-number">3</div>
-                            <div class="step-label">💚 Credits</div>
-                        </div>
-                        <div class="wizard-step" data-step="4">
-                            <div class="step-number">4</div>
                             <div class="step-label">📤 Export</div>
                         </div>
                     </div>
 
-                    <!-- Step 1: Plan -->
+                    <!-- Step 1: Content (Image & Caption) -->
                     <div class="wizard-content active" data-step="1">
-                    <fieldset class="form-section">
-                        <div class="form-group">
-                            <label for="post-scene">🌅 Scene Description</label>
-                            <input type="text" id="post-scene" placeholder="Describe the scene (location, mood, time of day)">
-                        </div>
-
-                        <div class="form-group">
-                            <label for="notes-input">📝 Notes</label>
-                            <input type="text" id="notes-input" class="notes-input" placeholder="Add a quick note, then press Enter to save it">
-                            <ul id="notes-list" class="notes-list"></ul>
-                        </div>
-
-                        <div class="form-group">
-                            <label>💡 Inspiration/Reference Images</label>
-                            <div id="inspiration-upload-zone" class="image-upload-zone" ondrop="handleDrop(event, 'inspiration-images')" ondragover="handleDragOver(event, 'inspiration-upload-zone')" ondragleave="handleDragLeave(event, 'inspiration-upload-zone')">
-                                <div class="upload-zone-content">
-                                    <div class="upload-icon">🖼️</div>
-                                    <div class="upload-text">Drop images here or click to select</div>
-                                    <div class="upload-hint">Supports JPG, PNG (or paste into this box)</div>
-                                </div>
-                                <input type="file" id="inspiration-images" accept="image/*" class="file-input-hidden" multiple aria-label="Inspiration images upload" title="Select inspiration images to upload">
-                            </div>
-                            <small>Upload multiple reference images to inspire your shoot</small>
-                            <div id="inspiration-gallery" class="inspiration-gallery"></div>
-                        </div>
-                    </fieldset>
-                    </div>
-
-                    <!-- Step 2: Content (Image & Caption) -->
-                    <div class="wizard-content" data-step="2">
                     <fieldset class="form-section">
                         <div class="section-heading">📝 Post Title</div>
                         
@@ -198,8 +164,8 @@
                     </fieldset>
                     </div>
 
-                    <!-- Step 3: Credits (Sponsors & Credits) -->
-                    <div class="wizard-content" data-step="3">
+                    <!-- Step 2: Credits (Sponsors & Credits) -->
+                    <div class="wizard-content" data-step="2">
                     <fieldset class="form-section">
                         <div class="section-heading">💚 Sponsors</div>
                         <p class="info-text">Add items you received as sponsors (gifts from creators/stores).</p>
@@ -223,8 +189,8 @@
                     </div>
                     </div>
 
-                    <!-- Step 4: Export (inline) -->
-                    <div class="wizard-content" data-step="4">
+                    <!-- Step 3: Export (inline) -->
+                    <div class="wizard-content" data-step="3">
                     <fieldset class="form-section">
                         <div class="section-heading">🚀 Export</div>
 
