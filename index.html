@@ -254,7 +254,6 @@
                             <button class="btn-primary" onclick="copyExport()">📋 Copy to Clipboard</button>
                         </div>
 
-                        <p class="info-text">Your bio from Settings is automatically appended where relevant.</p>
                     </fieldset>
                     </div>
 
@@ -392,24 +391,6 @@
                         <div id="cloud-sync-status" class="text-muted-small"></div>
                     </fieldset>
 
-                    <!-- Bio Section (Collapsible) -->
-                    <fieldset class="form-section settings-section-collapsible" data-section="bio">
-                        <div class="settings-section-header settings-section-toggle" onclick="toggleSettingsSection(this)">
-                            <div class="section-heading">👤 Your Bio</div>
-                            <span class="section-toggle">▼</span>
-                        </div>
-                        <div class="settings-section-content">
-                            <p class="info-text">Enter your permanent bio once. It will be automatically added to every platform export.</p>
-                            
-                            <div class="form-group">
-                                <label for="author-bio">Your Bio Text</label>
-                                <textarea id="author-bio" rows="3" placeholder="e.g., <b>GRAVES GHOSTLY</b> 🐺💚 <a href='https://gravesghostly.blog/'>Blog</a> ✦ <a href='https://bsky.app/profile/gravesghostly.blog'>Bluesky</a> ✦ <a href='https://www.youtube.com/@gravesghostly'>Youtube</a>"></textarea>
-                            </div>
-
-                            <button type="button" class="btn-primary" onclick="saveSettings()">💾 Save Bio</button>
-                        </div>
-                    </fieldset>
-                    
                     <!-- Hashtag Presets Section (Collapsible) -->
                     <fieldset class="form-section settings-section-collapsible" data-section="hashtags">
                         <div class="settings-section-header settings-section-toggle" onclick="toggleSettingsSection(this)">

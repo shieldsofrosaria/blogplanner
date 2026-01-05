@@ -7,7 +7,6 @@
 let posts = [];
 let events = []; // Events and deadlines storage
 let settings = {
-    authorBio: '',
     jsonbinKey: '',
     imgbbKey: '',
     exportTemplates: {},
@@ -108,7 +107,6 @@ document.addEventListener('DOMContentLoaded', () => {
     loadDraft();
     updateDashboard();
     updatePostsList();
-    displayAuthorBio();
     updateHashtagButtons();
     updateExportPresetDropdown();
     startSidebarClock();
@@ -1483,24 +1481,23 @@ function generateExport(platform, post) {
     
     const sponsors = formatCreditsForExport(post.sponsors);
     const credits = formatCreditsForExport(post.credits);
-    const bio = settings.authorBio || '[Your Bio - set in Settings]';
 
     const template = settings.exportTemplates?.[platform];
     if (template && template.trim().length > 0) {
-        return applyTemplate(template, { post, sponsors, credits, bio });
+        return applyTemplate(template, { post, sponsors, credits });
     }
     
     switch (platform) {
         case 'flickr':
-            return generateFlickrExport(post, sponsors, credits, bio);
+            return generateFlickrExport(post, sponsors, credits);
         case 'bluesky':
             return generateBlueskyExport(post, sponsors, credits);
         case 'youtube':
-            return generateYoutubeExport(post, sponsors, credits, bio);
+            return generateYoutubeExport(post, sponsors, credits);
         case 'primfeed':
-            return generatePrimfeedExport(post, sponsors, credits, bio);
+            return generatePrimfeedExport(post, sponsors, credits);
         case 'blog':
-            return generateBlogExport(post, sponsors, credits, bio);
+            return generateBlogExport(post, sponsors, credits);
         default:
             return '';
     }
@@ -1530,7 +1527,7 @@ function formatCreditsForExport(credits) {
     }).join('\n');
 }
 
-function generateFlickrExport(post, sponsors, credits, bio) {
+function generateFlickrExport(post, sponsors, credits) {
     const title = post.title || '';
     const sponsorBlock = sponsors || '✦ Add sponsor name and item link here';
     const creditBlock = credits || '✦ Add creator name and link here';
@@ -1567,7 +1564,7 @@ ${sponsorBlock}
 | #SecondLife #SLFurry`;
 }
 
-function generateYoutubeExport(post, sponsors, credits, bio) {
+function generateYoutubeExport(post, sponsors, credits) {
     const title = post.title || '';
     const sponsorBlock = sponsors || '✦ Add sponsor name and item link here';
     const creditBlock = credits || '✦ Add creator name and link here';
@@ -1595,13 +1592,13 @@ ${creditBlock}
 | ${tags}`;
 }
 
-function generatePrimfeedExport(post, sponsors, credits, bio) {
-    return generateYoutubeExport(post, sponsors, credits, bio);
+function generatePrimfeedExport(post, sponsors, credits) {
+    return generateYoutubeExport(post, sponsors, credits);
 }
 
-function generateBlogExport(post, sponsors, credits, bio) {
+function generateBlogExport(post, sponsors, credits) {
     // Same as Flickr/Blog template
-    return generateFlickrExport(post, sponsors, credits, bio);
+    return generateFlickrExport(post, sponsors, credits);
 }
 
 function generateBatchExport(platform) {
@@ -2090,18 +2087,7 @@ function sharePost(id) {
 // Settings Management
 // ============================================
 
-function displayAuthorBio() {
-    const bioDisplay = document.getElementById('bio-display');
-    if (!bioDisplay) return;
-    if (settings.authorBio) {
-        bioDisplay.innerHTML = settings.authorBio;
-    } else {
-        bioDisplay.innerHTML = '<em style="color: var(--text-secondary);">No bio set yet. Add one in Settings.</em>';
-    }
-}
-
 function saveSettings() {
-    settings.authorBio = document.getElementById('author-bio').value;
     settings.jsonbinKey = document.getElementById('jsonbin-key').value;
     settings.imgbbKey = document.getElementById('imgbb-key').value;
     
