@@ -1529,58 +1529,90 @@ function formatCreditsForExport(credits) {
 
 function generateFlickrExport(post, sponsors, credits) {
     const title = post.title || '';
-    const sponsorBlock = sponsors || '✦ Add sponsor name and item link here';
-    const creditBlock = credits || '✦ Add creator name and link here';
     const caption = post.caption || '';
-    return `Post Title: ${title}
+    
+    let content = `Post Title: ${title}
 
-| Sponsors 💚
-${sponsorBlock}
+`;
+    
+    if (sponsors) {
+        content += `| Sponsors 💚
+${sponsors}
 |
 
-${caption}
+`;
+    }
+    
+    content += caption;
+    
+    if (credits) {
+        content += `
 
 | Credits 📝
-${creditBlock}
-|
+${credits}
+|`;
+    }
+    
+    content += `
 
 -- ✦ --
 
 🐺 𝒈𝒓𝒂𝒗𝒆𝒔 𝒈𝒉𝒐𝒔𝒕𝒍𝒚 💫 <a href="https://gravesghostly.blog">blog</a> ✦ <a href="https://bsky.app/profile/gravesghostly.blog">bluesky</a> ✦ <a href="https://www.flickr.com/photos/192472980@N03">flickr</a> ✦ <a href="https://www.youtube.com/@gravesghostly">youtube</a> 💚`;
+    
+    return content;
 }
 
 function generateBlueskyExport(post, sponsors, credits) {
     // 300 char limit - keep tight
     const title = (post.title || '').substring(0, 50);
     const caption = (post.caption || '').substring(0, 120);
-    const sponsorBlock = sponsors || '✦ Add sponsors here';
     const link = post.blueskyLink ? ` - ${post.blueskyLink}` : '';
-    return `${title}${link}
+    
+    let content = `${title}${link}
 
-${caption}
+${caption}`;
+    
+    if (sponsors) {
+        content += `
 
 | Sponsors 💚
-${sponsorBlock}
+${sponsors}`;
+    }
+    
+    content += `
 | #SecondLife #SLFurry`;
+    
+    return content;
 }
 
 function generateYoutubeExport(post, sponsors, credits) {
     const title = post.title || '';
-    const sponsorBlock = sponsors || '✦ Add sponsor name and item link here';
-    const creditBlock = credits || '✦ Add creator name and link here';
     const caption = post.caption || '';
     const tags = post.tags?.map(t => `#${t}`).join(' ') || '';
-    return `Post Title: ${title}
+    
+    let content = `Post Title: ${title}
 
-| Sponsors 💚
-${sponsorBlock}
+`;
+    
+    if (sponsors) {
+        content += `| Sponsors 💚
+${sponsors}
 |
 
-${caption}
+`;
+    }
+    
+    content += caption;
+    
+    if (credits) {
+        content += `
 
 | Credits 📝
-${creditBlock}
-|
+${credits}
+|`;
+    }
+    
+    content += `
 
 -- ✦ --
 
@@ -1590,6 +1622,8 @@ ${creditBlock}
 ✦ flickr - https://www.flickr.com/photos/192472980@N03/
 ✦ youtube - https://www.youtube.com/@gravesghostly/
 | ${tags}`;
+    
+    return content;
 }
 
 function generatePrimfeedExport(post, sponsors, credits) {
