@@ -1532,8 +1532,8 @@ function formatCreditsForExport(credits) {
 
 function generateFlickrExport(post, sponsors, credits, bio) {
     const title = post.title || '';
-    const sponsorBlock = sponsors || '✦ (creator) - (item name)';
-    const creditBlock = credits || '✦ (creator) - (item name)';
+    const sponsorBlock = sponsors || '✦ Add sponsor name and item link here';
+    const creditBlock = credits || '✦ Add creator name and link here';
     const caption = post.caption || '';
     return `Post Title: ${title}
 
@@ -1556,7 +1556,7 @@ function generateBlueskyExport(post, sponsors, credits) {
     // 300 char limit - keep tight
     const title = (post.title || '').substring(0, 50);
     const caption = (post.caption || '').substring(0, 120);
-    const sponsorBlock = sponsors || '✦ (creator) - (item name)';
+    const sponsorBlock = sponsors || '✦ Add sponsors here';
     const link = post.blueskyLink ? ` - ${post.blueskyLink}` : '';
     return `${title}${link}
 
@@ -1569,8 +1569,8 @@ ${sponsorBlock}
 
 function generateYoutubeExport(post, sponsors, credits, bio) {
     const title = post.title || '';
-    const sponsorBlock = sponsors || '✦ (creator) - (item name)';
-    const creditBlock = credits || '✦ (creator) - (item name)';
+    const sponsorBlock = sponsors || '✦ Add sponsor name and item link here';
+    const creditBlock = credits || '✦ Add creator name and link here';
     const caption = post.caption || '';
     const tags = post.tags?.map(t => `#${t}`).join(' ') || '';
     return `Post Title: ${title}
