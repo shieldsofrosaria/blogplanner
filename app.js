@@ -1546,7 +1546,7 @@ ${creditBlock}
 
 -- ✦ --
 
-🐺 𝒈𝒓𝒂𝒗𝒆𝒔 𝒈𝒉𝒐𝒔𝒕𝒍𝒚 💫 <a href="https://gravesghostly.blog">𝑏𝑙𝑜𝑔</a> ✦ <a href="https://bsky.app/profile/gravesghostly.blog">𝑏𝑙𝑢𝑒𝑠𝑘𝑦</a> ✦ <a href="https://www.flickr.com/photos/192472980@N03">𝑓𝑙𝑖𝑐𝑘𝑟</a> ✦ <a href="https://www.youtube.com/@gravesghostly">𝑦𝑜𝑢𝑡𝑢𝑏𝑒</a> 💚`;
+🐺 𝒈𝒓𝒂𝒗𝒆𝒔 𝒈𝒉𝒐𝒔𝒕𝒍𝒚 💫 <a href="https://gravesghostly.blog">blog</a> ✦ <a href="https://bsky.app/profile/gravesghostly.blog">bluesky</a> ✦ <a href="https://www.flickr.com/photos/192472980@N03">flickr</a> ✦ <a href="https://www.youtube.com/@gravesghostly">youtube</a> 💚`;
 }
 
 function generateBlueskyExport(post, sponsors, credits) {
@@ -1585,10 +1585,10 @@ ${creditBlock}
 -- ✦ --
 
 🐺 𝒈𝒓𝒂𝒗𝒆𝒔 𝒈𝒉𝒐𝒔𝒕𝒍𝒚 💫
-✦ 𝑏𝑙𝑜𝑔 - https://gravesghostly.blog/
-✦ 𝑏𝑙𝑢𝑒𝑠𝑘𝑦 - https://bsky.app/profile/gravesghostly.blog/
-✦ 𝑓𝑙𝑖𝑐𝑘𝑟 - https://www.flickr.com/photos/192472980@N03/
-✦ 𝑦𝑜𝑢𝑡𝑢𝑏𝑒 - https://www.youtube.com/@gravesghostly/
+✦ blog - https://gravesghostly.blog/
+✦ bluesky - https://bsky.app/profile/gravesghostly.blog/
+✦ flickr - https://www.flickr.com/photos/192472980@N03/
+✦ youtube - https://www.youtube.com/@gravesghostly/
 | ${tags}`;
 }
 
