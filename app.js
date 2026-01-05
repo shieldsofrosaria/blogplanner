@@ -2099,7 +2099,6 @@ function saveSettings() {
         .filter(tag => tag.length > 0);
     
     localStorage.setItem('blogplanner-settings', JSON.stringify(settings));
-    displayAuthorBio();
     updateApiKeyStatus();
     updateHashtagButtons();
     
@@ -2178,7 +2177,7 @@ async function syncToCloud() {
 
     const data = {
         posts: posts,
-        settings: { authorBio: settings.authorBio }, // Don't sync API keys
+        settings: {}, // Don't sync API keys
         lastSync: new Date().toISOString()
     };
 
@@ -2254,14 +2253,9 @@ async function loadFromCloud() {
         
         // Restore data
         posts = data.posts || [];
-        if (data.settings?.authorBio) {
-            settings.authorBio = data.settings.authorBio;
-            document.getElementById('author-bio').value = settings.authorBio;
-        }
         
         saveData();
         updatePostsList();
-        displayAuthorBio();
         updateCloudSyncStatus(data.lastSync);
         
         showStatus('✅ Loaded from cloud successfully!');
@@ -2283,7 +2277,7 @@ function updateCloudSyncStatus(lastSync) {
 function clearAllData() {
     if (confirm('⚠️ This will delete ALL posts and settings. Are you sure?')) {
         posts = [];
-        settings = { authorBio: '', jsonbinKey: '', imgbbKey: '', exportTemplates: {} };
+        settings = { jsonbinKey: '', imgbbKey: '', exportTemplates: {} };
         selectedPostIds = new Set();
         currentBatchPosts = [];
         savedLibrary = { stores: [] };
@@ -2320,12 +2314,10 @@ function loadDataInit() {
         if (!settings.exportTemplates) settings.exportTemplates = {};
         if (!settings.hashtagPresets) settings.hashtagPresets = ['#3DArt', '#Blogger', '#EnvTuber', '#Fashion', '#FashionBlog', '#Furry', '#FurryArt', '#GravesGhostly', '#Metaverse', '#Photography', '#RareBeings', '#SecondLife', '#SecondLifeBlog', '#SecondLifeBlogger', '#SecondLifePhoto', '#SL', '#SLBlog', '#SLBlogger', '#VirtualPhotography'];
         if (!settings.exportPresets) settings.exportPresets = {};
-        document.getElementById('author-bio').value = settings.authorBio || '';
         document.getElementById('jsonbin-key').value = settings.jsonbinKey || '';
         document.getElementById('imgbb-key').value = settings.imgbbKey || '';
         document.getElementById('hashtag-presets').value = (settings.hashtagPresets || []).join('\n');
         console.log('Settings loaded:', {
-            hasBio: !!settings.authorBio,
             hasJsonbin: !!settings.jsonbinKey,
             hasImgbb: !!settings.imgbbKey
         });
