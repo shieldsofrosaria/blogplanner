@@ -23,7 +23,6 @@ let currentBatchPosts = [];
 const exportLimits = { bluesky: 300 };
 let currentPost = null;
 let currentPlatform = 'flickr';
-let inspirationImages = [];
 let currentWizardStep = 1;
 const totalWizardSteps = 3;
 let savedLibrary = { stores: [] }; // Saved creators/stores library
@@ -58,13 +57,6 @@ function compactInlineImage(dataUrl, stripAll = false) {
 function compactPostForStorage(post, stripAllInlineImages = false) {
     const compacted = { ...post };
     compacted.imageData = compactInlineImage(compacted.imageData, stripAllInlineImages);
-    if (Array.isArray(compacted.inspirationImages)) {
-        compacted.inspirationImages = compacted.inspirationImages
-            .map(img => compactInlineImage(img, stripAllInlineImages))
-            .filter(Boolean);
-    } else {
-        delete compacted.inspirationImages;
-    }
     return compacted;
 }
 
@@ -113,7 +105,6 @@ document.addEventListener('DOMContentLoaded', () => {
     setupAutosaveListeners();
     setupKeyboardShortcuts();
     setupImageUploadHandlers();
-    startAutoBackup();
     loadDraft();
     updateDashboard();
     updatePostsList();
@@ -294,7 +285,8 @@ function handleDragLeave(e, zoneId) {
 function handleDrop(e, inputId) {
     e.preventDefault();
     e.stopPropagation();
-    const zone = document.getElementById(`${inputId === 'blog-image' ? 'image-upload-zone' : 'inspiration-upload-zone'}`);
+    const zoneId = inputId === 'blog-image' ? 'image-upload-zone' : 'event-image-upload-zone';
+    const zone = document.getElementById(zoneId);
     if (zone) zone.classList.remove('drag-over');
     
     const files = Array.from(e.dataTransfer?.files || []).filter(f => f.type.startsWith('image/'));
@@ -442,41 +434,31 @@ function previousStep() {
 }
 
 function goToStep(stepNumber) {
-    // Hide current step
-    const currentContent = document.querySelector(`.wizard-content[data-step="${currentWizardStep}"]`);
-    if (currentContent) {
-        currentContent.classList.remove('active');
-    }
-    
-    // Remove active class from current step indicator
+    // Clamp and normalize
+    const targetStep = Math.min(Math.max(stepNumber, 1), totalWizardSteps);
+
+    // Reset all step content visibility
+    document.querySelectorAll('.wizard-content').forEach(content => content.classList.remove('active'));
+
+    // Reset indicators and mark completed/active
     document.querySelectorAll('.wizard-step').forEach(step => {
-        step.classList.remove('active');
-        if (parseInt(step.dataset.step) < stepNumber) {
-            step.classList.add('completed');
-        } else {
-            step.classList.remove('completed');
-        }
+        step.classList.remove('active', 'completed');
+        const stepNum = parseInt(step.dataset.step, 10);
+        if (stepNum < targetStep) step.classList.add('completed');
+        if (stepNum === targetStep) step.classList.add('active');
     });
+
+    // Show target content
+    const newContent = document.querySelector(`.wizard-content[data-step="${targetStep}"]`);
+    if (newContent) newContent.classList.add('active');
     
-    // Show new step
-    const newContent = document.querySelector(`.wizard-content[data-step="${stepNumber}"]`);
-    if (newContent) {
-        newContent.classList.add('active');
-    }
-    
-    // Update step indicator
-    const newStepIndicator = document.querySelector(`.wizard-step[data-step="${stepNumber}"]`);
-    if (newStepIndicator) {
-        newStepIndicator.classList.add('active');
-    }
-    
-    // Refresh export view when entering step 5
-    if (stepNumber === totalWizardSteps) {
-        prepareExportView();
+    // Refresh export view when entering final step
+    if (targetStep === totalWizardSteps) {
+        prepareExportView(currentPost);
     }
 
     // Update current step
-    currentWizardStep = stepNumber;
+    currentWizardStep = targetStep;
     
     // Update navigation buttons
     const prevBtn = document.querySelector('.wizard-btn-prev');
@@ -864,24 +846,6 @@ function toggleEventFields(checkbox) {
     }
 }
 
-function toggleAvatarDetails(nameInput) {
-    const card = nameInput.closest('.avatar-card');
-    const partsTable = card.querySelector('.avatar-parts-table');
-    const cosmeticsSection = card.querySelector('.avatar-cosmetics-section');
-
-    const hasName = nameInput.value.trim() !== '';
-
-    if (hasName) {
-        // Expand when a name is present
-        partsTable.classList.remove('collapsed-section');
-        if (cosmeticsSection) cosmeticsSection.style.display = 'flex';
-    } else {
-        // Collapse when empty to save space
-        partsTable.classList.add('collapsed-section');
-        if (cosmeticsSection) cosmeticsSection.style.display = 'none';
-    }
-}
-
 function addSponsor() {
     const sponsorsList = document.getElementById('sponsors-list');
     const item = document.createElement('div');
@@ -936,96 +900,6 @@ function addCredit() {
 
 function removeCredit(btn) {
     btn.parentElement.remove();
-}
-
-function addAvatar() {
-    const avatarsList = document.getElementById('avatars-list');
-    const item = document.createElement('div');
-    item.className = 'avatar-card';
-    item.innerHTML = `
-        <div class="avatar-card-header">
-            <input type="text" name="avatar-name" aria-label="Avatar name" placeholder="Avatar Name" class="avatar-name" oninput="toggleAvatarDetails(this)">
-            <button type="button" class="btn-remove" onclick="removeAvatar(this)">✕</button>
-        </div>
-        
-        <div class="avatar-parts-table collapsed-section">
-            <div class="avatar-parts-header">
-                <div class="col-part">Part</div>
-                <div class="col-creator">Creator/Mod</div>
-                <div class="col-link">Store Link</div>
-            </div>
-            
-            <div class="avatar-part-row">
-                <div class="col-part"><span class="part-label">Mod/Skin</span></div>
-                <input type="text" name="avatar-mod-creator" aria-label="Mod/Skin creator" placeholder="Creator" class="col-creator">
-                <input type="text" name="avatar-mod-link" aria-label="Mod/Skin store link" placeholder="Store Link" class="col-link">
-            </div>
-            
-            <div class="avatar-part-row">
-                <div class="col-part"><span class="part-label">Body</span></div>
-                <input type="text" name="avatar-body-creator" aria-label="Body creator" placeholder="Creator" class="col-creator">
-                <input type="text" name="avatar-body-link" aria-label="Body store link" placeholder="Store Link" class="col-link">
-            </div>
-            
-            <div class="avatar-part-row">
-                <div class="col-part"><span class="part-label">Head</span></div>
-                <input type="text" name="avatar-head-creator" aria-label="Head creator" placeholder="Creator" class="col-creator">
-                <input type="text" name="avatar-head-link" aria-label="Head store link" placeholder="Store Link" class="col-link">
-            </div>
-            
-            <div class="avatar-part-row">
-                <div class="col-part"><span class="part-label">Hands</span></div>
-                <input type="text" name="avatar-hands-creator" aria-label="Hands creator" placeholder="Creator" class="col-creator">
-                <input type="text" name="avatar-hands-link" aria-label="Hands store link" placeholder="Store Link" class="col-link">
-            </div>
-            
-            <div class="avatar-part-row">
-                <div class="col-part"><span class="part-label">Feet</span></div>
-                <input type="text" name="avatar-feet-creator" aria-label="Feet creator" placeholder="Creator" class="col-creator">
-                <input type="text" name="avatar-feet-link" aria-label="Feet store link" placeholder="Store Link" class="col-link">
-            </div>
-            
-            <div class="avatar-part-row">
-                <div class="col-part"><span class="part-label">Tail</span></div>
-                <input type="text" name="avatar-tail-creator" aria-label="Tail creator" placeholder="Creator" class="col-creator">
-                <input type="text" name="avatar-tail-link" aria-label="Tail store link" placeholder="Store Link" class="col-link">
-            </div>
-            
-            <div class="avatar-part-row">
-                <div class="col-part"><span class="part-label">Ears</span></div>
-                <input type="text" name="avatar-ears-creator" aria-label="Ears creator" placeholder="Creator" class="col-creator">
-                <input type="text" name="avatar-ears-link" aria-label="Ears store link" placeholder="Store Link" class="col-link">
-            </div>
-            
-            <div class="avatar-part-row">
-                <div class="col-part"><span class="part-label">Eyes</span></div>
-                <input type="text" name="avatar-eyes-creator" aria-label="Eyes creator" placeholder="Creator" class="col-creator">
-                <input type="text" name="avatar-eyes-link" aria-label="Eyes store link" placeholder="Store Link" class="col-link">
-            </div>
-            
-            <div class="avatar-part-row">
-                <div class="col-part"><span class="part-label">Hair</span></div>
-                <input type="text" name="avatar-hair-creator" aria-label="Hair creator" placeholder="Creator" class="col-creator">
-                <input type="text" name="avatar-hair-link" aria-label="Hair store link" placeholder="Store Link" class="col-link">
-            </div>
-            
-            <div class="avatar-part-row">
-                <div class="col-part"><span class="part-label">Nails/Claws</span></div>
-                <input type="text" name="avatar-nails-creator" aria-label="Nails/Claws creator" placeholder="Creator" class="col-creator">
-                <input type="text" name="avatar-nails-link" aria-label="Nails/Claws store link" placeholder="Store Link" class="col-link">
-            </div>
-        </div>
-        
-        <div class="avatar-cosmetics-section" style="display: none;">
-            <label for="avatar-cosmetics">Additional Cosmetics</label>
-            <textarea name="avatar-cosmetics" aria-label="Cosmetics" placeholder="List any additional items (jewelry, tattoos, etc.) - one per line" class="avatar-cosmetics" rows="2"></textarea>
-        </div>
-    `;
-    avatarsList.appendChild(item);
-}
-
-function removeAvatar(btn) {
-    btn.closest('.avatar-card').remove();
 }
 
 function restoreDraft(draft) {
@@ -1086,95 +960,6 @@ function restoreDraft(draft) {
         creditsList.appendChild(row);
     });
 
-    const avatarsList = document.getElementById('avatars-list');
-    avatarsList.innerHTML = '';
-    (draft.avatars || []).forEach(a => {
-        const row = document.createElement('div');
-        row.className = 'avatar-card';
-        row.innerHTML = `
-            <div class="avatar-card-header">
-                <input type="text" name="avatar-name" aria-label="Avatar name" placeholder="Avatar Name" class="avatar-name" value="${a.name || ''}">
-                <button type="button" class="btn-remove" onclick="removeAvatar(this)">✕</button>
-            </div>
-            
-            <div class="avatar-parts-table">
-                <div class="avatar-parts-header">
-                    <div class="col-part">Part</div>
-                    <div class="col-creator">Creator/Mod</div>
-                    <div class="col-link">Store Link</div>
-                </div>
-                
-                <div class="avatar-part-row">
-                    <div class="col-part"><span class="part-label">Mod/Skin</span></div>
-                    <input type="text" name="avatar-mod-creator" aria-label="Mod/Skin creator" placeholder="Creator" class="col-creator" value="${a.modCreator || ''}">
-                    <input type="text" name="avatar-mod-link" aria-label="Mod/Skin store link" placeholder="Store link" class="col-link" value="${a.modLink || ''}">
-                </div>
-                
-                <div class="avatar-part-row">
-                    <div class="col-part"><span class="part-label">Body</span></div>
-                    <input type="text" name="avatar-body-creator" aria-label="Body creator" placeholder="Creator" class="col-creator" value="${a.bodyCreator || ''}">
-                    <input type="text" name="avatar-body-link" aria-label="Body store link" placeholder="Store link" class="col-link" value="${a.bodyLink || ''}">
-                </div>
-                
-                <div class="avatar-part-row">
-                    <div class="col-part"><span class="part-label">Head</span></div>
-                    <input type="text" name="avatar-head-creator" aria-label="Head creator" placeholder="Creator" class="col-creator" value="${a.headCreator || ''}">
-                    <input type="text" name="avatar-head-link" aria-label="Head store link" placeholder="Store link" class="col-link" value="${a.headLink || ''}">
-                </div>
-                
-                <div class="avatar-part-row">
-                    <div class="col-part"><span class="part-label">Hands</span></div>
-                    <input type="text" name="avatar-hands-creator" aria-label="Hands creator" placeholder="Creator" class="col-creator" value="${a.handsCreator || ''}">
-                    <input type="text" name="avatar-hands-link" aria-label="Hands store link" placeholder="Store link" class="col-link" value="${a.handsLink || ''}">
-                </div>
-                
-                <div class="avatar-part-row">
-                    <div class="col-part"><span class="part-label">Feet</span></div>
-                    <input type="text" name="avatar-feet-creator" aria-label="Feet creator" placeholder="Creator" class="col-creator" value="${a.feetCreator || ''}">
-                    <input type="text" name="avatar-feet-link" aria-label="Feet store link" placeholder="Store link" class="col-link" value="${a.feetLink || ''}">
-                </div>
-                
-                <div class="avatar-part-row">
-                    <div class="col-part"><span class="part-label">Tail</span></div>
-                    <input type="text" name="avatar-tail-creator" aria-label="Tail creator" placeholder="Creator" class="col-creator" value="${a.tailCreator || ''}">
-                    <input type="text" name="avatar-tail-link" aria-label="Tail store link" placeholder="Store link" class="col-link" value="${a.tailLink || ''}">
-                </div>
-                
-                <div class="avatar-part-row">
-                    <div class="col-part"><span class="part-label">Ears</span></div>
-                    <input type="text" name="avatar-ears-creator" aria-label="Ears creator" placeholder="Creator" class="col-creator" value="${a.earsCreator || ''}">
-                    <input type="text" name="avatar-ears-link" aria-label="Ears store link" placeholder="Store link" class="col-link" value="${a.earsLink || ''}">
-                </div>
-                
-                <div class="avatar-part-row">
-                    <div class="col-part"><span class="part-label">Eyes</span></div>
-                    <input type="text" name="avatar-eyes-creator" aria-label="Eyes creator" placeholder="Creator" class="col-creator" value="${a.eyesCreator || ''}">
-                    <input type="text" name="avatar-eyes-link" aria-label="Eyes store link" placeholder="Store link" class="col-link" value="${a.eyesLink || ''}">
-                </div>
-                
-                <div class="avatar-part-row">
-                    <div class="col-part"><span class="part-label">Hair</span></div>
-                    <input type="text" name="avatar-hair-creator" aria-label="Hair creator" placeholder="Creator" class="col-creator" value="${a.hairCreator || ''}">
-                    <input type="text" name="avatar-hair-link" aria-label="Hair store link" placeholder="Store link" class="col-link" value="${a.hairLink || ''}">
-                </div>
-                
-                <div class="avatar-part-row">
-                    <div class="col-part"><span class="part-label">Nails/Claws</span></div>
-                    <input type="text" name="avatar-nails-creator" aria-label="Nails/Claws creator" placeholder="Creator" class="col-creator" value="${a.nailsCreator || ''}">
-                    <input type="text" name="avatar-nails-link" aria-label="Nails/Claws store link" placeholder="Store link" class="col-link" value="${a.nailsLink || ''}">
-                </div>
-            </div>
-            
-            <div class="avatar-cosmetics-section" style="display: none;">
-                <label for="avatar-cosmetics">Additional Cosmetics</label>
-                <textarea name="avatar-cosmetics" aria-label="Cosmetics" placeholder="List any additional items (jewelry, tattoos, etc.) - one per line" class="avatar-cosmetics" rows="2">${(a.cosmetics || []).join('\n')}</textarea>
-            </div>
-        `;
-        avatarsList.appendChild(row);
-    });
-    if (!avatarsList.innerHTML.trim()) {
-        addAvatar();
-    }
 }
 
 // ============================================
@@ -1373,9 +1158,11 @@ function savePost() {
     updatePostsList();
     clearDraft();
 
+    // Keep currentPost so export step can use the saved data without the form clearing
+    currentPost = postData;
+
     const warningMsg = warnings.length ? ` Saved without ${warnings.join(' & ')}.` : '';
     showSaveConfirmation(warningMsg);
-    clearForm();
 }
 
 function showSaveConfirmation(extraMessage = '') {
@@ -1533,15 +1320,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Inspiration images handler (allow multiple files from different sources)
-    const inspirationInput = document.getElementById('inspiration-images');
-    if (inspirationInput) {
-        inspirationInput.addEventListener('change', (e) => {
-            const newFiles = Array.from(e.target.files || []).filter(f => f.type.startsWith('image/'));
-            renderInspirationFiles(newFiles);
-        });
-    }
-
     // Event image handler (in event modal)
     const eventImageInput = document.getElementById('deadline-event-image');
     if (eventImageInput) {
@@ -1558,67 +1336,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
-
-async function renderInspirationFiles(files) {
-    if (!files || !files.length) return;
-    const gallery = document.getElementById('inspiration-gallery');
-    if (!gallery) return;
-
-    for (const file of files) {
-        try {
-            const previewData = await compressImageFile(file, { maxDimension: 1000, quality: 0.72 });
-            inspirationImages.push(previewData);
-            const index = inspirationImages.length - 1;
-
-            const item = document.createElement('div');
-            item.className = 'inspiration-item';
-            item.innerHTML = `
-                <img src="${previewData}" alt="Inspiration ${index + 1}">
-                <div class="inspiration-status">${settings.imgbbKey ? '⏳ Uploading...' : '⚠️ No ImgBB key'}</div>
-                <button type="button" class="remove-inspiration" onclick="removeInspirationImage(${index})">✕</button>
-            `;
-            gallery.appendChild(item);
-
-            if (settings.imgbbKey) {
-                const imageUrl = await uploadToImgBB(file);
-                const statusDiv = item.querySelector('.inspiration-status');
-                if (statusDiv) {
-                    if (imageUrl) {
-                        statusDiv.textContent = '✅ Uploaded';
-                        statusDiv.style.color = '#22c55e';
-                    } else {
-                        statusDiv.textContent = '⚠️ Upload failed';
-                        statusDiv.style.color = '#ef4444';
-                    }
-                }
-            } else {
-                const statusDiv = item.querySelector('.inspiration-status');
-                if (statusDiv) {
-                    statusDiv.style.color = '#f59e0b';
-                }
-            }
-        } catch (err) {
-            console.error('Inspiration image failed', err);
-        }
-    }
-    scheduleDraftSave();
-}
-
-function removeInspirationImage(index) {
-    inspirationImages.splice(index, 1);
-    const input = document.getElementById('inspiration-images');
-    if (input) input.value = '';
-    const gallery = document.getElementById('inspiration-gallery');
-    if (gallery) {
-        gallery.innerHTML = inspirationImages.map((img, i) => `
-            <div class="inspiration-item">
-                <img src="${img}" alt="Inspiration ${i + 1}">
-                <button type="button" class="remove-inspiration" onclick="removeInspirationImage(${i})">✕</button>
-            </div>
-        `).join('');
-    }
-    scheduleDraftSave();
-}
 
 // ============================================
 // Export Functions
@@ -1678,17 +1395,27 @@ function switchExportTab(platform) {
     if (tplTextarea) tplTextarea.value = settings.exportTemplates?.[platform] || '';
 }
 
-function prepareExportView() {
-    const postData = getFormData();
-    if (!postData.title || !postData.caption) {
-        showStatus('ℹ️ Add a title and caption to see export text');
+function prepareExportView(postOverride = null) {
+    const hasBatch = currentBatchPosts.length > 0;
+    const sourcePost = hasBatch
+        ? (postOverride || currentPost)
+        : (postOverride || currentPost || getFormData());
+
+    if (!hasBatch) {
+        if (!sourcePost?.title || !sourcePost?.caption) {
+            showStatus('ℹ️ Add a title and caption to see export text');
+        }
+        if (sourcePost) {
+            currentPost = sourcePost;
+        }
+    } else {
+        currentPost = postOverride || currentPost || null;
     }
-    currentPost = postData;
-    currentBatchPosts = [];
+
     switchExportTab(currentPlatform || 'flickr');
-    const exportText = currentBatchPosts.length > 0
+    const exportText = hasBatch
         ? generateBatchExport(currentPlatform)
-        : generateExport(currentPlatform, currentPost);
+        : generateExport(currentPlatform, currentPost || sourcePost);
     document.getElementById('export-text').value = exportText;
     updateExportCounter(exportText, currentPlatform);
 }
@@ -1804,83 +1531,77 @@ function formatCreditsForExport(credits) {
 }
 
 function generateFlickrExport(post, sponsors, credits, bio) {
-    return `Subject: 😊 ${post.title} 😊
+    const title = post.title || '';
+    const sponsorBlock = sponsors || '✦ (creator) - (item name)';
+    const creditBlock = credits || '✦ (creator) - (item name)';
+    const caption = post.caption || '';
+    return `Post Title: ${title}
 
-Caption:
 | Sponsors 💚
-${sponsors}
+${sponsorBlock}
 |
 
-${post.caption}
+${caption}
 
-| Credits ✨
-${credits}
+| Credits 📝
+${creditBlock}
 |
 
-${bio}`;
+-- ✦ --
+
+🐺 𝒈𝒓𝒂𝒗𝒆𝒔 𝒈𝒉𝒐𝒔𝒕𝒍𝒚 💫 <a href="https://gravesghostly.blog">𝑏𝑙𝑜𝑔</a> ✦ <a href="https://bsky.app/profile/gravesghostly.blog">𝑏𝑙𝑢𝑒𝑠𝑘𝑦</a> ✦ <a href="https://www.flickr.com/photos/192472980@N03">𝑓𝑙𝑖𝑐𝑘𝑟</a> ✦ <a href="https://www.youtube.com/@gravesghostly">𝑦𝑜𝑢𝑡𝑢𝑏𝑒</a> 💚`;
 }
 
 function generateBlueskyExport(post, sponsors, credits) {
-    // 300 char limit - need to be concise
-    const title = post.title.substring(0, 50);
-    const caption = post.caption.substring(0, 100);
-    const link = post.blueskyLink ? `\n\n| Sponsors 💚 ${post.blueskyLink}` : '';
-    
-    return `😊 ${title} ✦
+    // 300 char limit - keep tight
+    const title = (post.title || '').substring(0, 50);
+    const caption = (post.caption || '').substring(0, 120);
+    const sponsorBlock = sponsors || '✦ (creator) - (item name)';
+    const link = post.blueskyLink ? ` - ${post.blueskyLink}` : '';
+    return `${title}${link}
 
-✦ ${caption}${link}
+${caption}
 
-#SecondLife #SLFurry`;
+| Sponsors 💚
+${sponsorBlock}
+| #SecondLife #SLFurry`;
 }
 
 function generateYoutubeExport(post, sponsors, credits, bio) {
-    return `${post.title}
+    const title = post.title || '';
+    const sponsorBlock = sponsors || '✦ (creator) - (item name)';
+    const creditBlock = credits || '✦ (creator) - (item name)';
+    const caption = post.caption || '';
+    const tags = post.tags?.map(t => `#${t}`).join(' ') || '';
+    return `Post Title: ${title}
 
-${post.caption}
+| Sponsors 💚
+${sponsorBlock}
+|
 
-Sponsors 💚
-${sponsors}
+${caption}
 
-Credits ✨
-${credits}
+| Credits 📝
+${creditBlock}
+|
 
-${bio}`;
+-- ✦ --
+
+🐺 𝒈𝒓𝒂𝒗𝒆𝒔 𝒈𝒉𝒐𝒔𝒕𝒍𝒚 💫
+✦ 𝑏𝑙𝑜𝑔 - https://gravesghostly.blog/
+✦ 𝑏𝑙𝑢𝑒𝑠𝑘𝑦 - https://bsky.app/profile/gravesghostly.blog/
+✦ 𝑓𝑙𝑖𝑐𝑘𝑟 - https://www.flickr.com/photos/192472980@N03/
+✦ 𝑦𝑜𝑢𝑡𝑢𝑏𝑒 - https://www.youtube.com/@gravesghostly/
+| ${tags}`;
 }
 
 function generatePrimfeedExport(post, sponsors, credits, bio) {
-    // Same as Flickr but without HTML
-    return `Subject: 😊 ${post.title} 😊
-
-Caption:
-| Sponsors 💚
-${sponsors}
-|
-
-${post.caption}
-
-| Credits ✨
-${credits}
-|
-
-${bio}`;
+    return generateYoutubeExport(post, sponsors, credits, bio);
 }
 
 function generateBlogExport(post, sponsors, credits, bio) {
-    // Same as Flickr with HTML support
-    return `Subject: 😊 ${post.title} 😊
-
-Caption:
-| Sponsors 💚
-${sponsors}
-|
-
-${post.caption}
-
-| Credits ✨
-${credits}
-|
-
-${bio}`;
+    // Same as Flickr/Blog template
+    return generateFlickrExport(post, sponsors, credits, bio);
 }
 
 function generateBatchExport(platform) {
@@ -2217,7 +1938,6 @@ function batchExport() {
     switchExportTab(currentPlatform || 'flickr');
     switchSection('new-post');
     goToStep(totalWizardSteps);
-    prepareExportView();
     showStatus(`📤 Batch exporting ${selected.length} posts`);
 }
 
@@ -2266,7 +1986,6 @@ function editPost(id) {
     if (!post) return;
     
     currentPost = {};
-    currentEditingPostId = id;
     
     // Switch to new-post section first
     switchSection('new-post');
@@ -2298,8 +2017,6 @@ function editPost(id) {
             if (urlEl) urlEl.value = post.hostedImageUrl;
             if (containerEl) containerEl.classList.remove('hidden');
         }
-
-        // No inspiration images or notes in the streamlined flow
         
         // Sponsors
         const sponsorsList = document.getElementById('sponsors-list');
@@ -2331,70 +2048,8 @@ function editPost(id) {
             `).join('');
         }
         
-        // Avatars
-        const avatarsList = document.getElementById('avatars-list');
-        if (avatarsList && post.avatars && post.avatars.length > 0) {
-            avatarsList.innerHTML = post.avatars.map(a => `
-                <div class="avatar-card">
-                    <div class="avatar-card-header">
-                        <input type="text" name="avatar-name" aria-label="Avatar name" placeholder="Avatar Name or Nickname" class="avatar-name" value="${a.name || ''}" oninput="toggleAvatarDetails(this)">
-                        <button type="button" class="btn-remove" onclick="removeAvatar(this)">✕</button>
-                    </div>
-                    <div class="avatar-parts-table">
-                        <div class="avatar-parts-header">
-                            <div class="col-part">Part</div>
-                            <div class="col-creator">Creator</div>
-                            <div class="col-link">Link</div>
-                        </div>
-                        <div class="avatar-part" data-part="Mod"><div>Mod</div>
-                            <input type="text" name="avatar-mod-creator" list="saved-stores" value="${a.modCreator || ''}">
-                            <input type="url" name="avatar-mod-link" placeholder="Link" value="${a.modLink || ''}">
-                        </div>
-                        <div class="avatar-part" data-part="Body"><div>Body</div>
-                            <input type="text" name="avatar-body-creator" list="saved-stores" value="${a.bodyCreator || ''}">
-                            <input type="url" name="avatar-body-link" placeholder="Link" value="${a.bodyLink || ''}">
-                        </div>
-                        <div class="avatar-part" data-part="Head"><div>Head</div>
-                            <input type="text" name="avatar-head-creator" list="saved-stores" value="${a.headCreator || ''}">
-                            <input type="url" name="avatar-head-link" placeholder="Link" value="${a.headLink || ''}">
-                        </div>
-                        <div class="avatar-part" data-part="Hands"><div>Hands</div>
-                            <input type="text" name="avatar-hands-creator" list="saved-stores" value="${a.handsCreator || ''}">
-                            <input type="url" name="avatar-hands-link" placeholder="Link" value="${a.handsLink || ''}">
-                        </div>
-                        <div class="avatar-part" data-part="Feet"><div>Feet</div>
-                            <input type="text" name="avatar-feet-creator" list="saved-stores" value="${a.feetCreator || ''}">
-                            <input type="url" name="avatar-feet-link" placeholder="Link" value="${a.feetLink || ''}">
-                        </div>
-                        <div class="avatar-part" data-part="Tail"><div>Tail</div>
-                            <input type="text" name="avatar-tail-creator" list="saved-stores" value="${a.tailCreator || ''}">
-                            <input type="url" name="avatar-tail-link" placeholder="Link" value="${a.tailLink || ''}">
-                        </div>
-                        <div class="avatar-part" data-part="Ears"><div>Ears</div>
-                            <input type="text" name="avatar-ears-creator" list="saved-stores" value="${a.earsCreator || ''}">
-                            <input type="url" name="avatar-ears-link" placeholder="Link" value="${a.earsLink || ''}">
-                        </div>
-                        <div class="avatar-part" data-part="Eyes"><div>Eyes</div>
-                            <input type="text" name="avatar-eyes-creator" list="saved-stores" value="${a.eyesCreator || ''}">
-                            <input type="url" name="avatar-eyes-link" placeholder="Link" value="${a.eyesLink || ''}">
-                        </div>
-                        <div class="avatar-part" data-part="Hair"><div>Hair</div>
-                            <input type="text" name="avatar-hair-creator" list="saved-stores" value="${a.hairCreator || ''}">
-                            <input type="url" name="avatar-hair-link" placeholder="Link" value="${a.hairLink || ''}">
-                        </div>
-                        <div class="avatar-part" data-part="Nails"><div>Nails</div>
-                            <input type="text" name="avatar-nails-creator" list="saved-stores" value="${a.nailsCreator || ''}">
-                            <input type="url" name="avatar-nails-link" placeholder="Link" value="${a.nailsLink || ''}">
-                        </div>
-                    </div>
-                    <div>
-                        <label>Cosmetics/Other</label>
-                        <textarea name="avatar-cosmetics" placeholder="One per line">${(a.cosmetics || []).join('\n')}</textarea>
-                    </div>
-                </div>
-            `).join('');
-        }
-        
+        // Avatars (removed - avatars no longer part of workflow)
+
         // Remove old post from array
         posts = posts.filter(p => p.id !== id);
         showStatus('📝 Post loaded for editing');
@@ -2429,7 +2084,6 @@ function sharePost(id) {
     switchExportTab('flickr');
     switchSection('new-post');
     goToStep(totalWizardSteps);
-    prepareExportView();
 }
 
 // ============================================
@@ -2670,9 +2324,6 @@ function loadDataInit() {
     if (savedPosts) {
         posts = JSON.parse(savedPosts).map(p => {
             const compacted = compactPostForStorage(p);
-            delete compacted.inspirationImages;
-            delete compacted.notes;
-            delete compacted.scene;
             return compacted;
         });
         console.log('Loaded posts:', posts.length);
@@ -2828,18 +2479,6 @@ function parseDateInput(value) {
     if (parts.length !== 3 || parts.some(isNaN)) return null;
     const [year, month, day] = parts;
     return new Date(year, month - 1, day); // local midnight
-}
-
-function formatMonthLabel(year, month) {
-    return new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' }).format(new Date(year, month, 1));
-}
-
-function inRange(target, start, end) {
-    if (!target || !start) return false;
-    const s = start.getTime();
-    const e = end ? end.getTime() : start.getTime();
-    const t = target.getTime();
-    return t >= s && t <= e;
 }
 
 
@@ -3140,86 +2779,11 @@ function saveData() {
 // Auto-Backup Functionality
 // ============================================
 
-let autoBackupInterval = null;
+// ============================================
+// Auto-Backup Functionality (Removed)
+// ============================================
 
-function createBackup() {
-    try {
-        const backupData = {
-            timestamp: new Date().toISOString(),
-            posts: getStorageReadyPosts(false, false),
-            settings: settings,
-            events: events,
-            library: savedLibrary
-        };
-        localStorage.setItem('blogplanner-backup', JSON.stringify(backupData));
-        console.log('Auto-backup created at', backupData.timestamp);
-    } catch (e) {
-        console.error('Backup error:', e);
-    }
-}
-
-function startAutoBackup() {
-    // Create initial backup
-    createBackup();
-    
-    // Set up 10-minute interval (600000 ms)
-    autoBackupInterval = setInterval(createBackup, 600000);
-}
-
-function restoreFromBackup() {
-    try {
-        const backup = localStorage.getItem('blogplanner-backup');
-        if (!backup) {
-            showToast('No backup available', 'info');
-            return false;
-        }
-        
-        const backupData = JSON.parse(backup);
-        posts = backupData.posts || [];
-        settings = backupData.settings || settings;
-        events = backupData.events || [];
-        savedLibrary = backupData.library || savedLibrary;
-        
-        saveData();
-        showToast(`✅ Restored from backup (${new Date(backupData.timestamp).toLocaleString()})`, 'success');
-        return true;
-    } catch (e) {
-        showToast('Error restoring backup: ' + e.message, 'error');
-        return false;
-    }
-}
-
-function getBackupInfo() {
-    try {
-        const backup = localStorage.getItem('blogplanner-backup');
-        if (!backup) return null;
-        
-        const backupData = JSON.parse(backup);
-        return {
-            timestamp: backupData.timestamp,
-            postCount: backupData.posts?.length || 0,
-            eventCount: backupData.events?.length || 0
-        };
-    } catch (e) {
-        return null;
-    }
-}
-
-function loadData() {
-    try {
-        const savedPosts = localStorage.getItem('blogplanner-posts');
-        const savedSettings = localStorage.getItem('blogplanner-settings');
-        const savedEvents = localStorage.getItem('blogplanner-events');
-        const savedLib = localStorage.getItem('blogplanner-library');
-        
-        if (savedPosts) posts = JSON.parse(savedPosts);
-        if (savedSettings) settings = { ...settings, ...JSON.parse(savedSettings) };
-        if (savedEvents) events = JSON.parse(savedEvents);
-        if (savedLib) savedLibrary = JSON.parse(savedLib);
-    } catch (e) {
-        showToast('Error loading data: ' + e.message, 'error');
-    }
-}
+// Auto-backup removed - localStorage autosave via draft functionality is sufficient
 
 // ============================================
 // Dashboard Navigation
@@ -3228,11 +2792,5 @@ function loadData() {
 function goToDashboard() {
     switchSection('dashboard');
 }
-
-// ============================================
-// Calendar Rendering
-// ============================================
-
-// All calendar rendering functions removed - using simpler upcoming events system instead
 
 
